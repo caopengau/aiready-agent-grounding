@@ -21,8 +21,6 @@
   "timezone": "Australia/Sydney",
   "labels": ["dependencies"],
   "assignees": ["caopengau"],
-  "prConcurrentLimit": 0,
-  "prHourlyLimit": 0,
   "minimumReleaseAge": "3 days",
   "stabilityDays": 3,
   "vulnerabilityAlerts": {
