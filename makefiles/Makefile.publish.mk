@@ -7,10 +7,13 @@
 # - npm publish fails with EUNSUPPORTEDPROTOCOL error
 # See PUBLISHING.md for details
 ###############################################################################
-include makefiles/Makefile.shared.mk
+# Resolve this makefile's directory to allow absolute invocation
+MAKEFILE_DIR := $(dir $(lastword $(MAKEFILE_LIST)))
+include $(MAKEFILE_DIR)/Makefile.shared.mk
+REPO_ROOT := $(abspath $(MAKEFILE_DIR)/..)
 
 .PHONY: publish npm-publish npm-login npm-check npm-publish-all \
-        version-patch version-minor version-major release-patch release-minor \
+	version-patch version-minor version-major release-patch release-minor release-major \
         publish-core publish-pattern-detect npm-publish-core npm-publish-pattern-detect \
         pull sync-from-spoke push-all deploy push
 
@@ -25,7 +28,7 @@ define require_spoke
 		$(call log_error,SPOKE parameter required. Usage: make $@ SPOKE=pattern-detect); \
 		exit 1; \
 	fi; \
-	if [ ! -d "packages/$(SPOKE)" ]; then \
+	if [ ! -d "$(REPO_ROOT)/packages/$(SPOKE)" ]; then \
 		$(call log_error,Package packages/$(SPOKE) not found); \
 		exit 1; \
 	fi
@@ -80,8 +83,19 @@ publish: ## Publish spoke to GitHub. Usage: make publish SPOKE=pattern-detect [O
 	git branch -D "$$branch" >/dev/null 2>&1 || true; \
 	git subtree split --prefix=packages/$(SPOKE) -b "$$branch" >/dev/null; \
 	$(call log_info,Subtree split complete: $$branch); \
+	split_commit=$$(git rev-parse "$$branch"); \
 	git push -f "$$remote" "$$branch":$(TARGET_BRANCH); \
-	$(call log_success,Synced @aiready/$(SPOKE) to GitHub spoke repo ($(TARGET_BRANCH)))
+	$(call log_success,Synced @aiready/$(SPOKE) to GitHub spoke repo ($(TARGET_BRANCH))); \
+	version=$$(node -p "require('./packages/$(SPOKE)/package.json').version"); \
+	spoke_tag="v$$version"; \
+	$(call log_step,Tagging spoke repo commit $$split_commit as $$spoke_tag...); \
+	if git ls-remote --tags "$$remote" "$$spoke_tag" | grep -q "$$spoke_tag"; then \
+		$(call log_info,Spoke tag $$spoke_tag already exists on $$remote; skipping); \
+	else \
+		git tag -a "$$spoke_tag" "$$split_commit" -m "Release @aiready/$(SPOKE) $$version"; \
+		git push "$$remote" "$$spoke_tag"; \
+		$(call log_success,Spoke tag pushed: $$spoke_tag); \
+	fi
 
 # Generic release targets (version bump + build + publish)
 release-patch: ## Release spoke patch version. Usage: make release-patch SPOKE=pattern-detect [OTP=123456]
@@ -99,6 +113,14 @@ release-minor: ## Release spoke minor version. Usage: make release-minor SPOKE=p
 	@$(MAKE) npm-publish SPOKE=$(SPOKE) OTP=$(OTP)
 	@$(MAKE) publish SPOKE=$(SPOKE) OWNER=$(OWNER)
 	@$(call log_success,Released new minor version of @aiready/$(SPOKE))
+
+release-major: ## Release spoke major version. Usage: make release-major SPOKE=pattern-detect [OTP=123456]
+	$(call require_spoke)
+	@$(MAKE) version-major SPOKE=$(SPOKE)
+	@$(MAKE) build
+	@$(MAKE) npm-publish SPOKE=$(SPOKE) OTP=$(OTP)
+	@$(MAKE) publish SPOKE=$(SPOKE) OWNER=$(OWNER)
+	@$(call log_success,Released new major version of @aiready/$(SPOKE))
 
 # Convenience aliases for specific spokes
 publish-core: ## Publish @aiready/core to GitHub (shortcut for: make publish SPOKE=core)

@@ -1,0 +1,126 @@
+###############################################################################
+# Makefile.release: One-command release orchestrator
+#
+# Automates per-spoke release steps:
+# - Version bump (patch/minor/major)
+# - Commit package.json change
+# - Create annotated git tag
+# - Build + publish to npm (pnpm)
+# - Sync GitHub spoke repo via subtree split
+# - Push monorepo branch and tags
+#
+# Usage examples:
+#   make -f makefiles/Makefile.release.mk release-one SPOKE=pattern-detect TYPE=minor [OTP=123456]
+#   make -f makefiles/Makefile.release.mk release-one SPOKE=core TYPE=patch [OTP=123456]
+#   make -f makefiles/Makefile.release.mk release-all TYPE=minor [OTP=123456]
+#   make -f makefiles/Makefile.release.mk release-status
+#
+# Notes:
+# - Always uses pnpm for publish to resolve workspace:* dependencies
+# - Tags use the form: <spoke>-v<version> (e.g., pattern-detect-v0.3.0)
+# - Requires npm login for publish; uses optional OTP if 2FA enabled
+###############################################################################
+
+# Resolve this makefile's directory to allow absolute invocation
+MAKEFILE_DIR := $(dir $(lastword $(MAKEFILE_LIST)))
+ROOT_DIR := $(abspath $(MAKEFILE_DIR)/..)
+include $(MAKEFILE_DIR)/Makefile.shared.mk
+include $(MAKEFILE_DIR)/Makefile.publish.mk
+
+.PHONY: release-one release-all release-status help
+
+# Default owner and branch (can be overridden)
+OWNER ?= caopengau
+TARGET_BRANCH ?= main
+
+# Internal helper: resolve version bump target name from TYPE
+define bump_target_for_type
+$(if $(filter $(1),patch),version-patch,$(if $(filter $(1),minor),version-minor,$(if $(filter $(1),major),version-major,)))
+endef
+
+# Internal: commit + tag for a spoke after version bump
+define commit_and_tag
+	version=$$(node -p "require('$(ROOT_DIR)/packages/$(SPOKE)/package.json').version"); \
+	$(call log_step,Committing @aiready/$(SPOKE) v$$version...); \
+	cd $(ROOT_DIR) && git add packages/$(SPOKE)/package.json; \
+	cd $(ROOT_DIR) && git commit -m "chore(release): @aiready/$(SPOKE) v$$version"; \
+	tag_name="$(SPOKE)-v$$version"; \
+	$(call log_step,Tagging $$tag_name...); \
+	cd $(ROOT_DIR) && git tag -a "$$tag_name" -m "Release @aiready/$(SPOKE) v$$version"; \
+	$(call log_success,Committed and tagged $$tag_name)
+endef
+
+# Release a single spoke end-to-end
+release-one: ## Release one spoke: TYPE=patch|minor|major, SPOKE=core|pattern-detect [OTP=123456]
+	$(call require_spoke)
+	@if [ -z "$(TYPE)" ]; then \
+		$(call log_error,TYPE parameter required. Usage: make $@ SPOKE=pattern-detect TYPE=minor); \
+		exit 1; \
+	fi
+	@# Skip if no changes since last tag unless FORCE=1 - combined into single shell for proper exit
+	@cd $(ROOT_DIR); \
+	last_tag=$$(git for-each-ref 'refs/tags/$(SPOKE)-v*' --sort=-creatordate --format '%(refname:short)' | head -n1); \
+	if [ -n "$$last_tag" ] && [ "$(FORCE)" != "1" ]; then \
+		$(call log_step,Checking changes in packages/$(SPOKE) since $$last_tag...); \
+		if git diff --quiet "$$last_tag" -- packages/$(SPOKE); then \
+			$(call log_info,No changes detected in packages/$(SPOKE) since $$last_tag); \
+			$(call log_success,Skipping release for @aiready/$(SPOKE)); \
+			exit 0; \
+		fi; \
+	fi; \
+	bump_target="$(call bump_target_for_type,$(TYPE))"; \
+	if [ -z "$$bump_target" ]; then \
+		$(call log_error,Invalid TYPE '$(TYPE)'. Expected patch|minor|major); \
+		exit 1; \
+	fi; \
+	$(call log_step,Bumping version for @aiready/$(SPOKE) ($(TYPE))...); \
+	$(MAKE) -C $(ROOT_DIR) $$bump_target SPOKE=$(SPOKE); \
+	$(call log_success,Version bump complete for @aiready/$(SPOKE)); \
+	$(call commit_and_tag); \
+	$(call log_step,Building workspace...); \
+	$(MAKE) -C $(ROOT_DIR) build; \
+	$(call log_success,Build complete); \
+	$(call log_step,Publishing @aiready/$(SPOKE) to npm...); \
+	$(MAKE) -C $(ROOT_DIR) npm-publish SPOKE=$(SPOKE) OTP=$(OTP); \
+	$(call log_step,Syncing GitHub spoke for @aiready/$(SPOKE)...); \
+	$(MAKE) -C $(ROOT_DIR) publish SPOKE=$(SPOKE) OWNER=$(OWNER); \
+	$(call log_step,Pushing monorepo branch and tags...); \
+	cd $(ROOT_DIR) && git push origin $(TARGET_BRANCH) --follow-tags; \
+	$(call log_success,Release finished for @aiready/$(SPOKE))
+
+# Release all spokes with the same bump type
+release-all: ## Release all spokes: TYPE=patch|minor|major [OTP=123456] [FORCE=1]
+	@if [ -z "$(TYPE)" ]; then \
+		$(call log_error,TYPE parameter required. Example: make $@ TYPE=minor); \
+		exit 1; \
+	fi
+	@for spoke in $(ALL_SPOKES); do \
+		$(call log_info,Releasing @aiready/$$spoke ($(TYPE))); \
+		$(MAKE) -f $(MAKEFILE_DIR)/Makefile.release.mk release-one SPOKE=$$spoke TYPE=$(TYPE) OTP=$(OTP) FORCE=$(FORCE) || exit 1; \
+	done
+	@$(call log_success,All spokes released)
+
+# Status overview: local vs published versions
+release-status: ## Show local and npm registry versions for core and pattern-detect
+	@$(call log_step,Reading local versions...)
+	@pd_local=$$(node -p "require('$(ROOT_DIR)/packages/pattern-detect/package.json').version"); \
+	core_local=$$(node -p "require('$(ROOT_DIR)/packages/core/package.json').version"); \
+	$(call log_info,@aiready/pattern-detect (local): $$pd_local); \
+	$(call log_info,@aiready/core (local): $$core_local); \
+	$(call log_step,Reading npm registry versions...); \
+	pd_remote=$$(npm view @aiready/pattern-detect version 2>/dev/null || echo "n/a"); \
+	core_remote=$$(npm view @aiready/core version 2>/dev/null || echo "n/a"); \
+	$(call log_info,@aiready/pattern-detect (npm): $$pd_remote); \
+	$(call log_info,@aiready/core (npm): $$core_remote); \
+	$(call log_success,Status collected)
+
+help: ## Show release help
+	@echo "Available targets:"; \
+	echo "  release-one      - Release one spoke (TYPE, SPOKE, [OTP], [FORCE])"; \
+	echo "  release-all      - Release all spokes (TYPE, [OTP], [FORCE])"; \
+	echo "  release-status   - Show local vs npm versions"; \
+	echo ""; \
+	echo "Examples:"; \
+	echo "  make -f makefiles/Makefile.release.mk release-one SPOKE=pattern-detect TYPE=minor"; \
+	echo "  make -f makefiles/Makefile.release.mk release-all TYPE=minor"; \
+	echo "  make -f makefiles/Makefile.release.mk release-status";
