@@ -16,17 +16,32 @@ AIReady helps teams **assess, visualize, and prepare** repositories for better A
 
 ### Core Tools (Free)
 
-- **[@aiready/pattern-detect](./packages/pattern-detect)** - Semantic duplicate detection for AI-generated patterns
-- **[@aiready/context-analyzer](./packages/context-analyzer)** - Token cost & context fragmentation analysis
-- **[@aiready/doc-drift](./packages/doc-drift)** - Documentation freshness vs code churn tracking
-- **[@aiready/consistency](./packages/consistency)** - Naming & pattern consistency scoring
-- **[@aiready/cli](./packages/cli)** - Unified CLI for all analysis tools
+- **[@aiready/pattern-detect](./packages/pattern-detect)** [![npm](https://img.shields.io/npm/v/@aiready/pattern-detect)](https://www.npmjs.com/package/@aiready/pattern-detect) - Semantic duplicate detection for AI-generated patterns
+- **[@aiready/context-analyzer](./packages/context-analyzer)** [![npm](https://img.shields.io/npm/v/@aiready/context-analyzer)](https://www.npmjs.com/package/@aiready/context-analyzer) - Context window cost & dependency fragmentation analysis ✨ **NEW**
+- **[@aiready/doc-drift](./packages/doc-drift)** - Documentation freshness vs code churn tracking _(Coming Soon)_
+- **[@aiready/consistency](./packages/consistency)** - Naming & pattern consistency scoring _(Coming Soon)_
+- **[@aiready/cli](./packages/cli)** - Unified CLI for all analysis tools _(Coming Soon)_
 
 ### Convenience Wrappers
 
 - **[@aiready/deps](./packages/deps)** - Dependency health (wraps madge + depcheck)
 
 ## 🚀 Quick Start
+
+### Using Individual Tools
+
+```bash
+# Detect semantic duplicates
+npx @aiready/pattern-detect ./src
+
+# Analyze context costs
+npx @aiready/context-analyzer ./src --output json
+
+# Or install globally
+npm install -g @aiready/pattern-detect @aiready/context-analyzer
+```
+
+### Using Unified CLI _(Coming Soon)_
 
 ```bash
 # Install CLI
