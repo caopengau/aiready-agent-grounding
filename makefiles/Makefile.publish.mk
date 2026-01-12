@@ -5,7 +5,7 @@
 # - workspace:* protocol in package.json is pnpm-specific
 # - pnpm publish auto-converts workspace:* to actual versions
 # - npm publish fails with EUNSUPPORTEDPROTOCOL error
-# See PUBLISHING.md for details
+# See .github/copilot-instructions.md for details
 ###############################################################################
 # Resolve this makefile's directory to allow absolute invocation
 MAKEFILE_DIR := $(dir $(lastword $(MAKEFILE_LIST)))

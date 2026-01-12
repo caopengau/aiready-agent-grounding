@@ -1,8 +1,31 @@
 # Copilot Instructions for AIReady
 
+**Use doc-mapping.json for loading relevant context and practices.**
+
 ## Project Overview
 
 AIReady is a monorepo containing tools for assessing AI-readiness and visualizing tech debt in codebases. The goal is to help teams prepare repositories for better AI adoption by detecting issues that confuse AI models and identifying tech debt.
+
+**Mission:** As AI becomes deeply integrated into SDLC, codebases accumulate tech debt faster due to knowledge cutoff limitations, different model preferences, duplicated patterns AI doesn't recognize, and context fragmentation. AIReady helps teams assess, visualize, and prepare repositories for better AI adoption.
+
+**Packages:**
+- **[@aiready/pattern-detect](packages/pattern-detect)** - Semantic duplicate detection for AI-generated patterns
+- **[@aiready/context-analyzer](packages/context-analyzer)** - Context window cost & dependency fragmentation analysis
+- **[@aiready/doc-drift](packages/doc-drift)** - Documentation freshness vs code churn tracking (Coming Soon)
+- **[@aiready/consistency](packages/consistency)** - Naming & pattern consistency scoring (Coming Soon)
+- **[@aiready/cli](packages/cli)** - Unified CLI for all analysis tools (Coming Soon)
+- **[@aiready/deps](packages/deps)** - Dependency health (wraps madge/depcheck)
+
+**Quick Start:**
+```bash
+# Detect semantic duplicates
+npx @aiready/pattern-detect ./src
+
+# Analyze context costs
+npx @aiready/context-analyzer ./src --output json
+```
+
+**SaaS Platform:** Free tools provide basic analysis. AIReady Pro offers historical trend analysis, team benchmarking, custom rule engines, integration APIs, and automated fix suggestions.
 
 ## Architecture: Hub-and-Spoke Pattern
 
@@ -92,21 +115,11 @@ git commit -m "feat: your changes"
 make push  # ← Syncs monorepo + ALL spoke repos automatically
 ```
 
-### 6. Publishing & Release
-
-```bash
-# Check what needs publishing
-make release-status
-
-# Release a spoke (one command does everything)
-make release-one SPOKE=context-analyzer TYPE=patch
-
-# Publish to npm only (advanced)
-make npm-publish SPOKE=context-analyzer
-
-# Sync GitHub only (advanced)
-make publish SPOKE=context-analyzer
-```
+**💡 What `make push` does:**
+- Pushes monorepo to GitHub ✅
+- Syncs ALL spoke repos automatically ✅
+- Skips spokes with no changes ✅
+- Keeps everything in sync effortlessly ✅
 
 ### Available Make Commands
 
@@ -123,12 +136,107 @@ make push           # Push + sync all spoke repos (RECOMMENDED)
 make release-status # Check versions (local vs npm)
 ```
 
-### Documentation
+## Publishing Strategy
 
-- **[WORKFLOW_GUIDE.md](./.github/WORKFLOW_GUIDE.md)** - Daily development workflows
-- **[PUBLISHING.md](../PUBLISHING.md)** - Complete publishing guide
-- **[DEVOPS_WORKFLOW.md](./.github/DEVOPS_WORKFLOW.md)** - Visual workflow diagrams
-- **[RELEASE_CHECKLIST.md](./.github/RELEASE_CHECKLIST.md)** - Quick release reference
+### Publishing Workflow
+
+**Use Makefile commands (never direct npm/pnpm publish):**
+
+```bash
+# Check status
+make release-status
+
+# Release a spoke (recommended - does everything)
+make release-one SPOKE=your-tool TYPE=patch
+
+# Or manual steps:
+make version-patch SPOKE=your-tool
+make build
+make npm-publish SPOKE=your-tool
+make publish SPOKE=your-tool
+```
+
+**Important:**
+- Always use `make push` after commits to sync spoke repos
+- Always use `make npm-publish` (handles workspace:* protocol)
+- Never use `npm publish` directly (will fail with workspace:* protocol)
+- Release order: `core` first, then dependent spokes
+- All spoke packages are free and open source
+- Publish to npm with `@aiready/` scope
+
+### Release Workflow
+
+#### Quick Release (One Command)
+
+```bash
+# Check what needs releasing
+make release-status
+
+# Release a spoke (patch/minor/major)
+make release-one SPOKE=context-analyzer TYPE=patch
+
+# Examples:
+make release-one SPOKE=context-analyzer TYPE=patch
+make release-one SPOKE=pattern-detect TYPE=minor
+make release-one SPOKE=core TYPE=major
+
+# With 2FA
+make release-one SPOKE=context-analyzer TYPE=patch OTP=123456
+```
+
+#### Pre-Release Checklist
+
+- [ ] `make test` - All tests passing
+- [ ] `make lint` - No lint errors
+- [ ] `git status` - Clean working directory
+- [ ] `make npm-check` - Logged into npm
+- [ ] Review changes since last release
+- [ ] Update README/CHANGELOG if needed
+
+#### Status Check
+
+```bash
+# See all package versions (local vs npm)
+make release-status
+```
+
+Output legend:
+- `✓` = Published (local matches npm)
+- `ahead` = Local is newer (needs publishing)
+- `new` = Not yet on npm
+
+#### Release Order
+
+1. **Core first** - Always release `@aiready/core` before spokes if it changed
+2. **Spokes next** - Release individual spokes in any order
+3. **CLI last** - Release `@aiready/cli` after all spokes it depends on
+
+#### Version Bump Guidelines
+
+**Patch (0.1.0 → 0.1.1):** Bug fixes, documentation updates, performance improvements, internal refactoring
+
+**Minor (0.1.0 → 0.2.0):** New features (backward compatible), new CLI options, new analysis algorithms, deprecations
+
+**Major (0.1.0 → 1.0.0):** Breaking changes, removed features/options, changed output formats, changed API signatures
+
+### Manual Release Workflow
+
+1. **Version Bump:** `make version-patch SPOKE=context-analyzer`
+2. **Commit & Tag:** `git add . && git commit -m "chore(release): @aiready/context-analyzer v0.2.0" && git tag -a "context-analyzer-v0.2.0"`
+3. **Build:** `make build`
+4. **Publish npm:** `make npm-publish SPOKE=context-analyzer [OTP=123456]`
+5. **Publish GitHub:** `make publish SPOKE=context-analyzer`
+6. **Push:** `git push origin main --follow-tags`
+
+### Sync Workflow (External Contributions)
+
+For external contributions to spoke repos:
+```bash
+# Pull changes from spoke repo back to monorepo
+make sync-from-spoke SPOKE=context-analyzer
+# Or use alias
+make pull SPOKE=context-analyzer
+```
 
 ## Adding a New Tool (Spoke)
 
@@ -190,8 +298,8 @@ export async function analyzeYourTool(
   const results: AnalysisResult[] = [];
 
   // Your analysis logic here
-make build
-# or: pnpm --filter @aiready/your-tool dev
+  make build
+  # or: pnpm --filter @aiready/your-tool dev
 ```
 
 ### Step 8: Publish (After Implementation)
@@ -295,103 +403,6 @@ import { similarityScore } from '@aiready/core';
 const score = similarityScore(code1, code2); // Returns 0-1
 ```
 
-## Publishing Strategy
-
-###
-
-### Publishing Workflow
-
-**Use Makefile commands (never direct npm/pnpm publish):**
-
-```bash
-# Check status
-make release-status
-
-# Release a spoke (recommended - does everything)
-make release-one SPOKE=your-tool TYPE=patch
-
-# Or manual steps:
-make version-patch SPOKE=your-tool
-make build
-make npm-publish SPOKE=your-tool
-make publish SPOKE=your-tool
-```
-
-**Important:** 
-- Always use `make push` after commits to sync spoke repos
-- Always use `make npm-publish` (handles workspace:* protocol)
-- Never use `npm publish` directly (will fail with workspace:* protocol)
-- Release order: `core` first, then dependent spokes Free Tier (npm packages)
-- All spoke packages are free and open source
-- Publish to npm with `@aiready/` scope
-- Basic analysis with limited output
-
-### Paid Tier (SaaS)
-- Historical trend analysis
-- Team benchmarking
-- Custom rule engines
-- Integration APIs
-- Hosted at aiready.dev
-
-**Upsell Funnel:**
-```
-Free CLI → Shows issues → "See trends" → Upgrade to Pro
-```
-
-## What Already Exists (Don't Rebuild)
-
-- **jscpd** - Byte-level duplicate detection
-- **madge** - Circular dependency graphs
-- **depcheck** - Unused dependencies
-- **ESLint** - Code linting
-- **typescript-metrics** - Complexity metrics
-
-**Our Differentiators:**
-- Semantic duplicate detection (not byte-level)
-- AI context cost estimation
-- Documentation drift analysis
-- Pattern consistency scoring
-
-## File Organization
-
-```
-aiready/
-├── packages/
-│   ├── core/              # Hub - shared utilities
-│   │   ├── src/
-│   │   │   ├── types.ts           # All shared types
-│   │   │   ├── index.ts           # Public exports
-│   │   │   └── utils/
-│   │   │       ├── file-scanner.ts
-│   │   │       ├── ast-parser.ts
-│   │   │       └── metrics.ts
-│   │   └── package.json
-│   │
-│   ├── pattern-detect/    # Spoke - duplicate patterns
-│   │   ├── src/
-2. ✅ **@aiready/pattern-detect** - Semantic duplicates (DONE, v0.5.1 on npm)
-3. ✅ **@aiready/context-analyzer** - Context window cost analysis (DONE, v0.1.0 on npm)
-4. **@aiready/doc-drift** - Documentation staleness
-5. **@aiready/consistency** - Naming patterns
-6. **@aiready/cli** - Unified interface
-7. **@aiready/deps** - Wrapper for madge/depcheck
-
-### Tool Implementation Plans
-- [Context Analyzer Plan](.github/plans/context-analyzer-plan.md) - Completed implementation
-- [Pattern Detect Retrospective](.github/plans/pattern-detect-plan.md) - Lessons learned from first spoke
-
-### DevOps Documentation
-- [WORKFLOW_GUIDE.md](.github/WORKFLOW_GUIDE.md) - Daily development workflows ⭐
-- [PUBLISHING.md](../PUBLISHING.md) - Complete publishing guide
-- [DEVOPS_WORKFLOW.md](.github/DEVOPS_WORKFLOW.md) - Visual workflow diagrams
-- [RELEASE_CHECKLIST.md](.github/RELEASE_CHECKLIST.md) - Quick release referenc
-├── turbo.json            # Turborepo config
-└── README.md             # Project overview
-```
-
-- **Should I use make or pnpm?** (Use `make` for DevOps, `pnpm --filter` for dev)
-- **Did I run `make push` after committing?** (Keeps spoke repos in sync)
-
 ## DevOps Best Practices
 
 ### ✅ DO
@@ -420,42 +431,113 @@ When performing DevOps tasks, prefer this order:
 3. **pnpm commands** (package-specific dev) - `pnpm --filter @aiready/core build`
 4. **Direct commands** (avoid) - `npm publish`, `git push` alone
 
-## Getting Help
+## Troubleshooting
 
-- Check existing spoke implementations for patterns
-- Review `@aiready/core` types for available utilities
-- Look at `@aiready/pattern-detect` as reference implementation
-- Keep spokes focused - one tool, one job
-- **Read [WORKFLOW_GUIDE.md](.github/WORKFLOW_GUIDE.md) for daily workflows**
-- **Read [PUBLISHING.md](../PUBLISHING.md) for release processes**
+### "Not logged into npm"
 
-### Issue Severity Levels
-- `critical` - Breaks AI understanding or causes bugs
-- `major` - Significantly impacts AI effectiveness
-- `minor` - Minor quality issues
-- `info` - Suggestions for improvement
+```bash
+make npm-login
+```
 
-### Code Style
-- TypeScript strict mode enabled
-- Pure functions preferred
-- Async/await over promises
-- Explicit return types
+### "Repository not found" on GitHub publish
+
+Create the spoke repository first:
+
+```bash
+gh repo create caopengau/aiready-{spoke-name} --public
+```
+
+### "workspace:* protocol" error
+
+You're using `npm publish` instead of `pnpm publish`. Use our Makefiles:
+
+```bash
+make npm-publish SPOKE=context-analyzer
+```
+
+### Changes not detected for release
+
+Force the release:
+
+```bash
+make release-one SPOKE=context-analyzer TYPE=patch FORCE=1
+```
+
+### Build fails before publish
+
+Ensure all packages build successfully:
+
+```bash
+make build
+make test
+```
+
+## File Organization
+
+```
+aiready/
+├── packages/
+│   ├── core/              # Hub - shared utilities
+│   │   ├── src/
+│   │   │   ├── types.ts           # All shared types
+│   │   │   ├── index.ts           # Public exports
+│   │   │   └── utils/
+│   │   │       ├── file-scanner.ts
+│   │   │       ├── ast-parser.ts
+│   │   │       └── metrics.ts
+│   │   └── package.json
+│   │
+│   ├── pattern-detect/    # Spoke - duplicate patterns
+│   │   ├── src/
+│   │   │   ├── cli.ts
+│   │   │   ├── detector.ts
+│   │   │   ├── index.ts
+│   │   │   └── __tests__/
+│   │   │       └── detector.test.ts
+│   │   └── package.json
+│   │
+│   ├── context-analyzer/  # Spoke - context costs
+│   │   ├── src/
+│   │   │   ├── analyzer.ts
+│   │   │   ├── cli.ts
+│   │   │   ├── index.ts
+│   │   │   ├── types.ts
+│   │   │   └── __tests__/
+│   │   │       └── analyzer.test.ts
+│   │   └── package.json
+│   │
+│   └── [future spokes]
+│
+├── makefiles/             # DevOps automation
+│   ├── Makefile.build.mk
+│   ├── Makefile.publish.mk
+│   ├── Makefile.quality.mk
+│   ├── Makefile.release.mk
+│   ├── Makefile.setup.mk
+│   └── Makefile.shared.mk
+│
+├── turbo.json             # Turborepo config
+├── pnpm-workspace.yaml    # Workspace config
+├── pnpm-lock.yaml         # Lockfile
+└── README.md              # Project overview
+```
 
 ## Next Steps
 
 Current priority order:
 
-1. ✅ **@aiready/core** - Basic utilities (DONE) - [Retrospective](.github/plans/pattern-detect-retrospective.md)
-2. ✅ **@aiready/pattern-detect** - Semantic duplicates (DONE) - [Retrospective](.github/plans/pattern-detect-retrospective.md)
-3. **@aiready/context-analyzer** - Token cost + fragmentation - [Implementation Plan](.github/plans/context-analyzer-plan.md)
+1. ✅ **@aiready/core** - Basic utilities (DONE)
+2. ✅ **@aiready/pattern-detect** - Semantic duplicates (DONE)
+3. ✅ **@aiready/context-analyzer** - Token cost + fragmentation (DONE)
 4. **@aiready/doc-drift** - Documentation staleness
 5. **@aiready/consistency** - Naming patterns
 6. **@aiready/cli** - Unified interface
 7. **@aiready/deps** - Wrapper for madge/depcheck
 
 ### Tool Implementation Plans
-- [Context Analyzer Plan](.github/plans/context-analyzer-plan.md) - Next tool to implement
-- [Pattern Detect Retrospective](.github/plans/pattern-detect-retrospective.md) - Lessons learned from first spoke
+
+- [Context Analyzer Plan](.github/plans/context-analyzer-plan.md) - Completed implementation
+- [Pattern Detect Retrospective](.github/plans/pattern-detect-plan.md) - Lessons learned from first spoke
 
 ## Questions for Agent
 
