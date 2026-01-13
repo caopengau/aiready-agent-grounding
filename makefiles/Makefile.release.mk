@@ -27,7 +27,7 @@ ROOT_DIR := $(abspath $(MAKEFILE_DIR)/..)
 include $(MAKEFILE_DIR)/Makefile.shared.mk
 include $(MAKEFILE_DIR)/Makefile.publish.mk
 
-.PHONY: release-one release-all release-status help
+.PHONY: check-changes check-dependency-updates check-dependency-updates release-one release-all release-status help
 
 # Default owner and branch (can be overridden)
 OWNER ?= caopengau
@@ -50,6 +50,39 @@ define commit_and_tag
 	$(call log_success,Committed and tagged $$tag_name)
 endef
 
+# Check if a spoke has changes since its last release tag
+check-changes: ## Check if SPOKE has changes since last release tag (returns: has_changes/no_changes)
+	$(call require_spoke)
+	@last_tag=$$(git for-each-ref 'refs/tags/$(SPOKE)-v*' --sort=-creatordate --format '%(refname:short)' | head -n1); \
+	if [ -z "$$last_tag" ]; then \
+		$(call log_info,No previous release tag found for @aiready/$(SPOKE)); \
+		echo "has_changes"; \
+		exit 0; \
+	fi; \
+	$(call log_step,Checking changes in packages/$(SPOKE) since $$last_tag...); \
+	if git diff --quiet "$$last_tag" -- packages/$(SPOKE); then \
+		$(call log_info,No code changes detected in packages/$(SPOKE) since $$last_tag); \
+		$(call log_step,Checking for outdated dependencies...); \
+		if $(MAKE) -s check-dependency-updates SPOKE=$(SPOKE) | grep -q "has_outdated_deps"; then \
+			$(call log_info,Outdated dependencies detected, changes needed); \
+			echo "has_changes"; \
+			exit 0; \
+		else \
+			$(call log_info,No changes detected in packages/$(SPOKE) since $$last_tag); \
+			echo "no_changes"; \
+			exit 1; \
+		fi; \
+	else \
+		$(call log_info,Code changes detected in packages/$(SPOKE) since $$last_tag); \
+		echo "has_changes"; \
+		exit 0; \
+	fi
+
+# Check if a spoke's published dependencies are outdated
+check-dependency-updates: ## Check if SPOKE's published dependencies have newer versions
+	$(call require_spoke)
+	@./makefiles/scripts/check-dependency-updates.sh $(SPOKE)
+
 # Release a single spoke end-to-end
 release-one: ## Release one spoke: TYPE=patch|minor|major, SPOKE=core|pattern-detect [OTP=123456]
 	$(call require_spoke)
@@ -57,13 +90,9 @@ release-one: ## Release one spoke: TYPE=patch|minor|major, SPOKE=core|pattern-de
 		$(call log_error,TYPE parameter required. Usage: make $@ SPOKE=pattern-detect TYPE=minor); \
 		exit 1; \
 	fi
-	@# Skip if no changes since last tag unless FORCE=1 - combined into single shell for proper exit
-	@cd $(ROOT_DIR); \
-	last_tag=$$(git for-each-ref 'refs/tags/$(SPOKE)-v*' --sort=-creatordate --format '%(refname:short)' | head -n1); \
-	if [ -n "$$last_tag" ] && [ "$(FORCE)" != "1" ]; then \
-		$(call log_step,Checking changes in packages/$(SPOKE) since $$last_tag...); \
-		if git diff --quiet "$$last_tag" -- packages/$(SPOKE); then \
-			$(call log_info,No changes detected in packages/$(SPOKE) since $$last_tag); \
+	@# Skip if no changes since last tag unless FORCE=1
+	@if [ "$(FORCE)" != "1" ]; then \
+		if ! $(MAKE) -s check-changes SPOKE=$(SPOKE) >/dev/null 2>&1; then \
 			$(call log_success,Skipping release for @aiready/$(SPOKE)); \
 			exit 0; \
 		fi; \
@@ -125,11 +154,15 @@ release-status: ## Show local and npm registry versions for all spokes
 
 release-help: ## Show release help
 	@echo "Available targets:"; \
-	echo "  release-one      - Release one spoke (TYPE, SPOKE, [OTP], [FORCE])"; \
-	echo "  release-all      - Release all spokes (TYPE, [OTP], [FORCE])"; \
-	echo "  release-status   - Show local vs npm versions"; \
+	echo "  check-changes            - Check if SPOKE has changes since last release"; \
+	echo "  check-dependency-updates - Check if SPOKE has outdated dependencies"; \
+	echo "  release-one              - Release one spoke (TYPE, SPOKE, [OTP], [FORCE])"; \
+	echo "  release-all              - Release all spokes (TYPE, [OTP], [FORCE])"; \
+	echo "  release-status           - Show local vs npm versions"; \
 	echo ""; \
 	echo "Examples:"; \
+	echo "  make check-changes SPOKE=cli"; \
+	echo "  make check-dependency-updates SPOKE=cli"; \
 	echo "  make release-one SPOKE=pattern-detect TYPE=minor"; \
 	echo "  make release-all TYPE=minor"; \
 	echo "  make release-status";
