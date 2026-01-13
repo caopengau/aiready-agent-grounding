@@ -200,12 +200,27 @@ program
       };
 
       // Load and merge config with CLI options
-      const finalOptions = loadMergedConfig(directory, defaults, {
+      let baseOptions = loadMergedConfig(directory, defaults, {
         maxDepth: options.maxDepth ? parseInt(options.maxDepth) : undefined,
         maxContextBudget: options.maxContext ? parseInt(options.maxContext) : undefined,
         include: options.include?.split(','),
         exclude: options.exclude?.split(','),
       });
+
+      // Apply smart defaults for context analysis (always for individual context command)
+      let finalOptions: any = { ...baseOptions };
+      const { getSmartDefaults } = await import('@aiready/context-analyzer');
+      const contextSmartDefaults = await getSmartDefaults(directory, baseOptions);
+      finalOptions = { ...contextSmartDefaults, ...finalOptions };
+      
+      // Display configuration
+      console.log('📋 Configuration:');
+      console.log(`   Max depth: ${finalOptions.maxDepth}`);
+      console.log(`   Max context budget: ${finalOptions.maxContextBudget}`);
+      console.log(`   Min cohesion: ${(finalOptions.minCohesion * 100).toFixed(1)}%`);
+      console.log(`   Max fragmentation: ${(finalOptions.maxFragmentation * 100).toFixed(1)}%`);
+      console.log(`   Analysis focus: ${finalOptions.focus}`);
+      console.log('');
 
       const { analyzeContext, generateSummary } = await import('@aiready/context-analyzer');
 
