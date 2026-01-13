@@ -1,0 +1,1 @@
+{"scan": {"include": ["packages/**/*.ts"], "exclude": ["packages/**/dist/**", "packages/**/node_modules/**"]}, "tools": {"pattern-detect": {"severity": "high", "minSimilarity": 0.8}, "context-analyzer": {"maxDepth": 3}}}
