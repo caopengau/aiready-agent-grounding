@@ -4,10 +4,15 @@
 
 When AI tools try to help with your code, they need to load files into their context window. Fragmented code structures make this expensive and sometimes impossible. This tool analyzes your codebase to identify:
 
-- Deep import chains that require loading dozens of files
-- Fragmented modules scattered across many directories
-- Low-cohesion files mixing unrelated concerns
-- Files with excessive context budgets
+- 📦 **High Context Budget**: Files that cost too many AI tokens to understand (file + dependencies)
+- 🔗 **Deep Import Chains**: Cascading dependencies that force AI to load many files
+- 🎯 **Low Cohesion**: Files mixing unrelated concerns (God objects)
+- 🗂️ **High Fragmentation**: Domains scattered across many directories
+
+**Quick Start:**
+```bash
+npx @aiready/context-analyzer ./src
+```
 
 ## 🎯 Why This Tool?
 
@@ -49,6 +54,147 @@ Result: AI sees everything, gives complete answers ✅
 - Use **dependency-cruiser** to enforce architecture rules (blocking)
 - Use **@aiready/context-analyzer** to optimize for AI tools (advisory)
 - Track improvements over time with SaaS tier
+
+## 🧠 Understanding the Metrics
+
+This tool measures four key dimensions that affect how much context AI tools need to load:
+
+### 📊 Context Budget (Tokens)
+
+**What it measures:** Total AI tokens needed to understand a file (file content + all dependencies)
+
+**Why it matters:** AI tools have limited context windows (e.g., 128K tokens). Large context budgets mean:
+- AI needs to load more files to understand your code
+- Risk of hitting context limits → incomplete/wrong answers
+- Slower AI responses (more processing time)
+
+**Example:**
+```typescript
+// High context budget (15,000 tokens)
+import { A, B, C } from './deeply/nested/utils'  // +5,000 tokens
+import { X, Y, Z } from './another/chain'       // +8,000 tokens
+// Your file: 2,000 tokens
+// Total: 15,000 tokens just to understand this one file!
+
+// Low context budget (2,500 tokens)  
+// No deep imports, self-contained logic
+// Total: 2,500 tokens
+```
+
+**🎯 Recommendation:** Files with high context budgets should be **split into smaller, more focused modules**.
+
+---
+
+### 🔗 Import Depth
+
+**What it measures:** How many layers deep your import chains go
+
+**Why it matters:** Deep import chains create cascading context loads:
+```
+app.ts → service.ts → helper.ts → util.ts → core.ts → base.ts
+```
+AI must load all 6 files just to understand app.ts!
+
+**Example:**
+```typescript
+// Deep chain (depth 8) = AI loads 8+ files
+import { validate } from '../../../utils/validators/user/schema'
+
+// Shallow (depth 2) = AI loads 2 files  
+import { validate } from './validators'
+```
+
+**🎯 Recommendation:** Flatten dependency trees or use **facade patterns** to reduce depth.
+
+---
+
+### 🎯 Cohesion Score (0-1)
+
+**What it measures:** How related the exports in a file are to each other
+
+**How it's calculated:** Uses Shannon entropy of inferred domains
+- 1.0 = Perfect cohesion (all exports are related)
+- 0.0 = Zero cohesion (completely unrelated exports)
+
+**Why it matters:** Low cohesion = "God object" pattern = AI confusion
+```typescript
+// Low cohesion (0.3) - mixing unrelated concerns
+export function validateUser() { }      // User domain
+export function formatDate() { }        // Date domain  
+export function sendEmail() { }         // Email domain
+export class DatabasePool { }          // Database domain
+// AI thinks: "What does this file actually do?"
+
+// High cohesion (0.9) - focused responsibility
+export function validateUser() { }
+export function createUser() { }
+export function updateUser() { }
+export interface User { }
+// AI thinks: "Clear! This is user management."
+```
+
+**🎯 Recommendation:** Files with low cohesion should be **split by domain** into separate, focused files.
+
+---
+
+### 🗂️ Fragmentation Score (0-1)
+
+**What it measures:** How scattered a domain/concept is across different directories
+
+**How it's calculated:** `(unique directories - 1) / (total files - 1)`
+- 0.0 = No fragmentation (all files in same directory)
+- 1.0 = Maximum fragmentation (each file in different directory)
+
+**Why it matters:** Scattered domains force AI to load many unrelated paths
+```typescript
+// High fragmentation (0.8) - User domain scattered
+src/api/user-routes.ts           // 800 tokens
+src/services/user-service.ts     // 1,200 tokens
+src/helpers/user-helpers.ts      // 600 tokens
+src/utils/user-utils.ts          // 500 tokens
+src/validators/user-validator.ts // 700 tokens
+src/models/user-model.ts         // 900 tokens
+// Total: 4,700 tokens spread across 6 directories!
+// AI must navigate entire codebase to understand "User"
+
+// Low fragmentation (0.0) - consolidated
+src/user/user.ts                 // 2,800 tokens  
+src/user/types.ts                // 600 tokens
+// Total: 3,400 tokens in one place (29% savings!)
+// AI finds everything in one logical location
+```
+
+**🎯 Recommendation:** Domains with high fragmentation should be **consolidated** into cohesive modules.
+
+---
+
+### ⚖️ The Tradeoff: Splitting vs. Consolidating
+
+**Important:** These metrics can pull in opposite directions!
+
+| Action | Context Budget ⬇️ | Fragmentation ⬇️ | Cohesion ⬆️ |
+|--------|------------------|------------------|-------------|
+| **Split large file** | ✅ Reduces | ⚠️ May increase | ✅ Can improve |
+| **Consolidate scattered files** | ⚠️ May increase | ✅ Reduces | ⚠️ May decrease |
+
+**Best Practice:** Optimize for your use case:
+- **Large files with mixed concerns** → Split by domain (improves cohesion + reduces budget)
+- **Scattered single-domain files** → Consolidate (reduces fragmentation)
+- **Large files with high cohesion** → May be OK if under context budget threshold
+- **Small scattered files** → Consolidate into domain modules
+
+**The tool helps you identify the right balance!**
+
+### 📋 Quick Reference Table
+
+| Metric | Good ✅ | Bad ❌ | Fix |
+|--------|---------|--------|-----|
+| **Context Budget** | < 10K tokens | > 25K tokens | Split large files |
+| **Import Depth** | ≤ 5 levels | ≥ 8 levels | Flatten dependencies |
+| **Cohesion** | > 0.6 (60%) | < 0.4 (40%) | Split by domain |
+| **Fragmentation** | < 0.5 (50%) | > 0.7 (70%) | Consolidate domain |
+
+**Rule of thumb:** The tool flags files that make AI's job harder (expensive to load, confusing to understand, scattered to find).
 
 ## 🚀 Installation
 
@@ -93,6 +239,13 @@ aiready-context ./src --output json --output-file custom-report.json
 
 > **💡 Tip:** By default, console output shows the top 10 results per category. Use `--max-results <number>` to see more, or use `--output json` to get complete details of all issues.
 
+### Understanding Threshold Tuning
+
+Each parameter controls **when the tool flags a file as problematic**. Think of them as sensitivity dials:
+
+- **Lower values** = More strict = More issues reported = More sensitive
+- **Higher values** = More lenient = Fewer issues reported = Less sensitive
+
 ### Getting More/Fewer Results
 
 **Want to catch MORE potential issues?** (More sensitive, shows smaller problems)
@@ -100,23 +253,39 @@ aiready-context ./src --output json --output-file custom-report.json
 ```bash
 # Lower thresholds to be more strict:
 aiready-context ./src --max-depth 3 --max-context 5000 --min-cohesion 0.7 --max-fragmentation 0.4
+#                                 ↓                  ↓                   ↑                      ↓
+#                         Catches depth≥4    Catches 5K+ tokens  Requires 70%+ cohesion  Catches 40%+ fragmentation
 ```
+
+**What this means:**
+- `--max-depth 3`: Flag files with import depth ≥4 (stricter than default 5-7)
+- `--max-context 5000`: Flag files needing 5K+ tokens (catches smaller files)
+- `--min-cohesion 0.7`: Require 70%+ cohesion (stricter about mixed concerns)
+- `--max-fragmentation 0.4`: Flag domains with 40%+ scatter (catches less severe fragmentation)
 
 **Want to see FEWER issues?** (Less noise, focus on critical problems only)
 
 ```bash
 # Raise thresholds to be more lenient:
 aiready-context ./src --max-depth 10 --max-context 30000 --min-cohesion 0.4 --max-fragmentation 0.8
+#                                  ↑                   ↑                   ↓                      ↑
+#                         Only depth≥11      Only 30K+ tokens      Allows 40%+ cohesion    Only 80%+ fragmentation
 ```
+
+**What this means:**
+- `--max-depth 10`: Only flag import depth ≥11 (very deep chains)
+- `--max-context 30000`: Only flag files needing 30K+ tokens (only huge files)
+- `--min-cohesion 0.4`: Accept 40%+ cohesion (more lenient about mixed concerns)
+- `--max-fragmentation 0.8`: Only flag 80%+ scatter (only severely fragmented)
 
 ### Threshold Parameters Explained
 
-| Parameter | Default (Auto) | Lower = More Strict | Higher = Less Strict |
-|-----------|---------------|-------------------|---------------------|
-| `--max-depth` | 4-10* | Catches shallower imports | Only very deep chains |
-| `--max-context` | 8k-40k* | Catches smaller files | Only huge files |
-| `--min-cohesion` | 0.35-0.5* | Stricter about mixed concerns | More lenient |
-| `--max-fragmentation` | 0.5-0.8* | Catches less scattered code | Only severely scattered |
+| Parameter | Default (Auto) | Lower = More Strict | Higher = Less Strict | Impact |
+|-----------|---------------|-------------------|---------------------|--------|
+| `--max-depth` | 4-10* | Catches shallower imports | Only very deep chains | More splits → flatter structure |
+| `--max-context` | 8k-40k* | Catches smaller files | Only huge files | More splits → smaller modules |
+| `--min-cohesion` | 0.35-0.5* | Stricter about mixed concerns | More lenient | More splits → focused files |
+| `--max-fragmentation` | 0.5-0.8* | Catches less scattered code | Only severely scattered | More consolidation → domain modules |
 
 \* Auto-adjusted based on your repository size (100 files vs 2000+ files)
 
@@ -125,16 +294,36 @@ aiready-context ./src --max-depth 10 --max-context 30000 --min-cohesion 0.4 --ma
 **Small codebase getting too many warnings?**
 ```bash
 aiready-context ./src --max-depth 6 --min-cohesion 0.5
+# Explanation: Allow slightly deeper imports and more mixed concerns
+# Use when: Your codebase is naturally small and warnings feel excessive
 ```
 
 **Large codebase showing too few issues?**
 ```bash
 aiready-context ./src --max-depth 5 --max-context 15000
+# Explanation: Be stricter about depth and context to catch more problems
+# Use when: You know there are issues but they're not being detected
 ```
 
 **Focus on critical issues only:**
 ```bash
 aiready-context ./src --max-depth 8 --max-context 25000 --min-cohesion 0.3
+# Explanation: Very lenient - only show the worst offenders
+# Use when: Fixing warnings in stages, start with critical issues first
+```
+
+**Preparing for AI refactoring sprint:**
+```bash
+aiready-context ./src --max-depth 4 --max-context 8000 --min-cohesion 0.6 --max-fragmentation 0.5
+# Explanation: Strict on all dimensions to get comprehensive issue list
+# Use when: Planning a major refactoring effort, need complete audit
+```
+
+**Microservices architecture (naturally fragmented):**
+```bash
+aiready-context ./src --max-fragmentation 0.9
+# Explanation: Very lenient on fragmentation (services are meant to be separate)
+# Use when: Analyzing microservices where fragmentation is intentional
 ```
 
 ## 📤 Output Options
