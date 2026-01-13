@@ -121,14 +121,14 @@ release-one: ## Release one spoke: TYPE=patch|minor|major, SPOKE=core|pattern-de
 	$(call log_success,Release finished for @aiready/$(SPOKE))
 
 # Release all spokes with the same bump type
-release-all: ## Release all spokes: TYPE=patch|minor|major [OTP=123456]
+release-all: ## Release all spokes: TYPE=patch|minor|major [OTP=123456] [FORCE=1]
 	@if [ -z "$(TYPE)" ]; then \
 		$(call log_error,TYPE parameter required. Example: make $@ TYPE=minor); \
 		exit 1; \
 	fi
 	@for spoke in $(RELEASE_ORDER); do \
 		$(call log_info,Releasing @aiready/$$spoke ($(TYPE))); \
-		$(MAKE) -f $(MAKEFILE_DIR)/Makefile.release.mk release-one SPOKE=$$spoke TYPE=$(TYPE) OTP=$(OTP) FORCE=1 || exit 1; \
+		$(MAKE) -f $(MAKEFILE_DIR)/Makefile.release.mk release-one SPOKE=$$spoke TYPE=$(TYPE) OTP=$(OTP) FORCE=$(FORCE) || exit 1; \
 	done
 	@$(call log_success,All spokes released)
 
