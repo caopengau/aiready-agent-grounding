@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 
 import { Command } from 'commander';
-import { analyzePatterns, generateSummary } from './index';
-import type { PatternType } from './detector';
+import { analyzePatterns, generateSummary, detectDuplicatePatterns } from './index';
+import type { PatternType, DuplicatePattern } from './detector';
 import chalk from 'chalk';
 import { writeFileSync } from 'fs';
 import { join } from 'path';
@@ -14,6 +14,7 @@ program
   .name('aiready-patterns')
   .description('Detect duplicate patterns in your codebase')
   .version('0.1.0')
+  .addHelpText('after', '\nCONFIGURATION:\n  Supports config files: aiready.json, aiready.config.json, .aiready.json, .aireadyrc.json, aiready.config.js, .aireadyrc.js\n  CLI options override config file settings')
   .argument('<directory>', 'Directory to analyze')
   .option('-s, --similarity <number>', 'Minimum similarity score (0-1)', '0.40')
   .option('-l, --min-lines <number>', 'Minimum lines to consider', '5')
@@ -24,6 +25,8 @@ program
   .option('--no-stream-results', 'Disable incremental output (default: enabled)')
   .option('--include <patterns>', 'File patterns to include (comma-separated)')
   .option('--exclude <patterns>', 'File patterns to exclude (comma-separated)')
+  .option('--severity <level>', 'Filter by severity: critical|high|medium|all', 'all')
+  .option('--include-tests', 'Include test files in analysis (excluded by default)')
   .option(
     '-o, --output <format>',
     'Output format: console, json, html',
@@ -49,6 +52,8 @@ program
       streamResults: true,
       include: undefined,
       exclude: undefined,
+      severity: 'all',
+      includeTests: false,
     };
 
     // Merge config with defaults
@@ -66,9 +71,45 @@ program
       streamResults: options.streamResults !== false && mergedConfig.streamResults,
       include: options.include?.split(',') || mergedConfig.include,
       exclude: options.exclude?.split(',') || mergedConfig.exclude,
+      severity: options.severity || mergedConfig.severity,
+      includeTests: options.includeTests || mergedConfig.includeTests,
     };
 
+    // Handle test file exclusion by default
+    if (!finalOptions.includeTests) {
+      const testPatterns = [
+        '**/*.test.*',
+        '**/*.spec.*',
+        '**/__tests__/**',
+        '**/test/**',
+        '**/*.test',
+        '**/*.spec',
+      ];
+      finalOptions.exclude = finalOptions.exclude
+        ? [...finalOptions.exclude, ...testPatterns]
+        : testPatterns;
+    }
+
     const results = await analyzePatterns(finalOptions);
+
+    // Also get raw duplicate patterns for detailed console output
+    const { scanFiles, readFileContent } = await import('@aiready/core');
+    const files = await scanFiles(finalOptions);
+    const fileContents = await Promise.all(
+      files.map(async (file) => ({
+        file,
+        content: await readFileContent(file),
+      }))
+    );
+    const rawDuplicates = await detectDuplicatePatterns(fileContents, {
+      minSimilarity: finalOptions.minSimilarity,
+      minLines: finalOptions.minLines,
+      batchSize: finalOptions.batchSize,
+      approx: finalOptions.approx,
+      minSharedTokens: finalOptions.minSharedTokens,
+      maxCandidatesPerBlock: finalOptions.maxCandidatesPerBlock,
+      streamResults: finalOptions.streamResults,
+    });
 
     const elapsedTime = ((Date.now() - startTime) / 1000).toFixed(2);
     const summary = generateSummary(results);
@@ -138,36 +179,40 @@ program
       });
     }
 
-    // Show top duplicates
-    if (summary.topDuplicates.length > 0 && totalIssues > 0) {
+    // Show top duplicates with detailed information
+    if (totalIssues > 0) {
       console.log(chalk.cyan('\n' + divider));
       console.log(chalk.bold.white('  TOP DUPLICATE PATTERNS'));
       console.log(chalk.cyan(divider) + '\n');
 
-      summary.topDuplicates.slice(0, 10).forEach((dup, idx) => {
-        const severityColor =
-          dup.similarity > 0.95
-            ? chalk.red
-            : dup.similarity > 0.9
-            ? chalk.yellow
-            : chalk.blue;
+      // Filter duplicates by severity if specified
+      let filteredDuplicates = rawDuplicates;
+      if (finalOptions.severity !== 'all') {
+        const severityThresholds = {
+          critical: 0.95,
+          high: 0.9,
+          medium: 0.4,
+        };
+        const threshold = severityThresholds[finalOptions.severity as keyof typeof severityThresholds] || 0.4;
+        filteredDuplicates = rawDuplicates.filter(dup => dup.similarity >= threshold);
+      }
 
-        console.log(
-          `${chalk.dim(`${idx + 1}.`)} ${severityColor(
-            `${Math.round(dup.similarity * 100)}%`
-          )} ${getPatternIcon(dup.patternType)} ${chalk.white(dup.patternType)}`
-        );
-        
-        dup.files.forEach((file, fileIdx) => {
-          const prefix = fileIdx === 0 ? '   ' : '   ↔ ';
-          console.log(
-            `${chalk.dim(prefix)}${chalk.dim(file.path)}:${chalk.cyan(file.startLine)}-${chalk.cyan(file.endLine)}`
-          );
-        });
-        
-        console.log(
-          `   ${chalk.red(`${dup.tokenCost.toLocaleString()} tokens wasted`)}\n`
-        );
+      // Sort by similarity (highest first) and take top 5-10
+      const topDuplicates = filteredDuplicates
+        .sort((a, b) => b.similarity - a.similarity)
+        .slice(0, 10);
+
+      topDuplicates.forEach((dup, idx) => {
+        const severity = dup.similarity > 0.95 ? 'CRITICAL' : dup.similarity > 0.9 ? 'HIGH' : 'MEDIUM';
+        const severityIcon = dup.similarity > 0.95 ? '🔴' : dup.similarity > 0.9 ? '🟡' : '🔵';
+
+        // Get relative file names for cleaner display
+        const file1Name = dup.file1.split('/').pop() || dup.file1;
+        const file2Name = dup.file2.split('/').pop() || dup.file2;
+
+        console.log(`${severityIcon} ${severity}: ${chalk.bold(file1Name)} ↔ ${chalk.bold(file2Name)}`);
+        console.log(`   Similarity: ${chalk.bold(Math.round(dup.similarity * 100) + '%')} | Wasted: ${chalk.bold(dup.tokenCost.toLocaleString())} tokens each`);
+        console.log(`   Location: lines ${chalk.cyan(dup.line1 + '-' + dup.endLine1)} ↔ lines ${chalk.cyan(dup.line2 + '-' + dup.endLine2)}\n`);
       });
     }
 

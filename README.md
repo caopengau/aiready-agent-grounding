@@ -58,6 +58,47 @@ aiready context . --max-depth 3
 aiready scan . --output json --output-file results.json
 ```
 
+## ⚙️ Configuration
+
+AIReady supports configuration files for persistent settings. Create one of these files in your project root:
+
+- `aiready.json`
+- `aiready.config.json` 
+- `.aiready.json`
+- `.aireadyrc.json`
+- `aiready.config.js`
+- `.aireadyrc.js`
+
+### Example Configuration
+
+```json
+{
+  "scan": {
+    "include": ["**/*.{ts,tsx,js,jsx}"],
+    "exclude": ["**/node_modules/**", "**/dist/**", "**/*.test.*"]
+  },
+  "tools": {
+    "pattern-detect": {
+      "minSimilarity": 0.5,
+      "minLines": 8,
+      "severity": "high",
+      "includeTests": false
+    },
+    "context-analyzer": {
+      "maxDepth": 5,
+      "maxContextBudget": 100000,
+      "minCohesion": 0.7
+    }
+  },
+  "output": {
+    "format": "console",
+    "file": null
+  }
+}
+```
+
+CLI options override config file settings.
+
 ## 🏗️ Development
 
 We use a **Makefile-based workflow** for local development. See [MAKEFILE.md](./MAKEFILE.md) for full documentation.

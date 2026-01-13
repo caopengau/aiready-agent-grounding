@@ -60,6 +60,14 @@ aiready-patterns ./src --similarity 0.9
 # Only look at larger patterns
 aiready-patterns ./src --min-lines 10
 
+# Filter by severity (focus on critical issues first)
+aiready-patterns ./src --severity critical  # Only >95% similar
+aiready-patterns ./src --severity high      # Only >90% similar
+aiready-patterns ./src --severity medium    # Only >80% similar
+
+# Include test files (excluded by default)
+aiready-patterns ./src --include-tests
+
 # Memory optimization for large codebases
 aiready-patterns ./src --max-blocks 1000 --batch-size 200
 
@@ -112,7 +120,9 @@ Create an `aiready.json` or `aiready.config.json` file in your project root to p
       "minSimilarity": 0.5,
       "minLines": 8,
       "approx": false,
-      "batchSize": 200
+      "batchSize": 200,
+      "severity": "high",
+      "includeTests": false
     }
   }
 }

@@ -10,6 +10,8 @@ export interface PatternDetectOptions extends ScanOptions {
   minSharedTokens?: number; // Minimum shared tokens to consider a candidate, default 8
   maxCandidatesPerBlock?: number; // Cap candidates per block, default 100
   streamResults?: boolean; // Output duplicates incrementally as found (default false)
+  severity?: string; // Filter by severity: critical|high|medium|all (default: all)
+  includeTests?: boolean; // Include test files in analysis (default: false)
 }
 
 export interface PatternSummary {
@@ -67,6 +69,8 @@ export async function analyzePatterns(
     minSharedTokens = 8,
     maxCandidatesPerBlock = 100,
     streamResults = false,
+    severity = 'all',
+    includeTests = false,
     ...scanOptions
   } = options;
 
@@ -118,6 +122,18 @@ export async function analyzePatterns(
       };
     });
 
+    // Filter issues by severity if specified
+    let filteredIssues = issues;
+    if (severity !== 'all') {
+      const severityMap = {
+        critical: ['critical'],
+        high: ['critical', 'major'],
+        medium: ['critical', 'major', 'minor'],
+      };
+      const allowedSeverities = severityMap[severity as keyof typeof severityMap] || ['critical', 'major', 'minor'];
+      filteredIssues = issues.filter(issue => allowedSeverities.includes(issue.severity));
+    }
+
     const totalTokenCost = fileDuplicates.reduce(
       (sum, dup) => sum + dup.tokenCost,
       0
@@ -125,7 +141,7 @@ export async function analyzePatterns(
 
     results.push({
       fileName: file,
-      issues,
+      issues: filteredIssues,
       metrics: {
         tokenCost: totalTokenCost,
         consistencyScore: Math.max(0, 1 - fileDuplicates.length * 0.1),
