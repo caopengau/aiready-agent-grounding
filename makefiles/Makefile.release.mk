@@ -10,10 +10,10 @@
 # - Push monorepo branch and tags
 #
 # Usage examples:
-#   make -f makefiles/Makefile.release.mk release-one SPOKE=pattern-detect TYPE=minor [OTP=123456]
-#   make -f makefiles/Makefile.release.mk release-one SPOKE=core TYPE=patch [OTP=123456]
-#   make -f makefiles/Makefile.release.mk release-all TYPE=minor [OTP=123456]
-#   make -f makefiles/Makefile.release.mk release-status
+#   make release-one SPOKE=pattern-detect TYPE=minor [OTP=123456]
+#   make release-one SPOKE=core TYPE=patch [OTP=123456]
+#   make release-all TYPE=minor [OTP=123456]
+#   make release-status
 #
 # Notes:
 # - Always uses pnpm for publish to resolve workspace:* dependencies
