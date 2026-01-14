@@ -67,7 +67,11 @@ const ACCEPTABLE_ABBREVIATIONS = new Set([
   // Boolean helpers (these are intentional short names)
   'is', 'has', 'can', 'did', 'was', 'are',
   // Date/Time context (when in date contexts)
-  'd', 't', 'dt'
+  'd', 't', 'dt',
+  // Coverage metrics (industry standard: statements/branches/functions/lines)
+  's', 'b', 'f', 'l',
+  // Common media/content abbreviations
+  'vid', 'pic', 'img', 'doc', 'msg'
 ]);
 
 /**
@@ -155,6 +159,13 @@ function analyzeFileNaming(
       const singleLetterMatches = line.matchAll(/\b(?:const|let|var)\s+([a-hm-z])\s*=/gi);
       for (const match of singleLetterMatches) {
         const letter = match[1].toLowerCase();
+        
+        // Coverage metrics context (s/b/f/l are standard for statements/branches/functions/lines)
+        const isCoverageContext = /coverage|summary|metrics|pct|percent/i.test(line) || 
+          /\.(?:statements|branches|functions|lines)\.pct/i.test(line);
+        if (isCoverageContext && ['s', 'b', 'f', 'l'].includes(letter)) {
+          continue;
+        }
         
         // Enhanced loop/iterator context detection
         const isInLoopContext = 
