@@ -25,17 +25,24 @@ aiready-consistency ./src
 Inconsistent code patterns confuse AI models and reduce their effectiveness. This tool analyzes:
 
 ### 🏷️ Naming Quality & Conventions
-- Single-letter variables (except loop counters)
-- Unclear abbreviations
-- Mixed naming conventions (camelCase vs snake_case)
-- Boolean naming (should use is/has/can prefixes)
-- Function naming (should start with action verbs)
+- **Single-letter variables** - Detects unclear variable names (skips common iterators: i, j, k, l, x, y, z in appropriate contexts)
+- **Abbreviations** - Identifies unclear abbreviations while allowing 60+ standard ones (env, req, res, ctx, max, min, etc.)
+- **Mixed naming conventions** - Detects snake_case in TypeScript/JavaScript projects (should use camelCase)
+- **Boolean naming** - Ensures booleans use clear prefixes (is/has/can/should)
+- **Function naming** - Checks for action verbs while allowing factory patterns and descriptive names
+
+**Smart Detection:** The tool understands context and won't flag:
+- Common abbreviations (env, api, url, max, min, now, etc.)
+- Boolean prefixes (is, has, can used as variables)
+- Loop iterators in appropriate contexts
+- Factory/builder patterns
+- Long descriptive function names
 
 ### 🔄 Pattern Consistency
-- Error handling strategies (try-catch vs returns)
-- Async patterns (async/await vs promises vs callbacks)
-- Import styles (ES modules vs CommonJS)
-- API design patterns
+- **Error handling strategies** - Detects mixed approaches (try-catch vs returns vs throws)
+- **Async patterns** - Identifies mixing of async/await, promises, and callbacks
+- **Import styles** - Flags mixing of ES modules and CommonJS
+- **API design patterns** - Ensures consistent patterns across endpoints
 
 ### 🏗️ Architectural Consistency *(coming soon)*
 - File organization patterns
@@ -148,6 +155,20 @@ Create `aiready.json` in your project root:
 | `checkNaming` | boolean | `true` | Check naming conventions |
 | `checkPatterns` | boolean | `true` | Check code pattern consistency |
 | `minSeverity` | string | `'info'` | Filter: `'info'`, `'minor'`, `'major'`, `'critical'` |
+
+### Acceptable Abbreviations
+
+The tool recognizes 60+ standard abbreviations and won't flag them:
+
+**Web/Network:** url, uri, api, cdn, dns, ip, http, utm, seo, xhr  
+**Data:** json, xml, yaml, csv, html, css, svg, pdf, dto, dao  
+**System:** env, os, fs, cli, tmp, src, dst, bin, lib, pkg  
+**Request/Response:** req, res, ctx, err, msg  
+**Math:** max, min, avg, sum, abs, cos, sin, log, sqrt  
+**Time:** now, utc, ms, sec  
+**Common:** id, uid, db, sql, orm, ui, ux, dom, ref, val, str, obj, arr, cfg, init
+
+See [naming.ts](src/analyzers/naming.ts) for the complete list.
 
 ## 🔧 Programmatic API
 

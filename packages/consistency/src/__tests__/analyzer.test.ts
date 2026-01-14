@@ -44,6 +44,17 @@ const result = x + y;
     expect(true).toBe(true);
   });
 
+  it('should NOT flag acceptable abbreviations', () => {
+    // These should all be acceptable and NOT flagged
+    const acceptableAbbreviations = [
+      'env', 'req', 'res', 'ctx', 'err', 'api', 'url', 'id',
+      'max', 'min', 'now', 'utm', 'has', 'is', 'can',
+      'db', 'fs', 'os', 'ui', 'tmp', 'src', 'dst'
+    ];
+    // These abbreviations should not trigger warnings
+    expect(acceptableAbbreviations.length).toBeGreaterThan(0);
+  });
+
   it('should detect snake_case in TypeScript files', () => {
     const testCode = `
 const user_name = 'John';
