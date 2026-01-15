@@ -74,7 +74,7 @@ export async function analyzeNamingAST(files: string[]): Promise<NamingIssue[]> 
 
   // Load config
   const rootDir = files.length > 0 ? dirname(files[0]) : process.cwd();
-  const config = loadConfig(rootDir);
+  const config = await loadConfig(rootDir);
   const consistencyConfig = config?.tools?.['consistency'];
 
   // Merge custom configuration

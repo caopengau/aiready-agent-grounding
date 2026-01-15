@@ -94,6 +94,27 @@ export async function analyzeConsistency(
     });
   }
 
+  // Sort results by severity first, then by issue count per file
+  results.sort((fileResultA, fileResultB) => {
+    const severityOrder = { critical: 0, major: 1, minor: 2, info: 3 };
+    
+    // Get highest severity in each file
+    const maxSeverityA = Math.min(
+      ...fileResultA.issues.map(i => severityOrder[(i as ConsistencyIssue).severity])
+    );
+    const maxSeverityB = Math.min(
+      ...fileResultB.issues.map(i => severityOrder[(i as ConsistencyIssue).severity])
+    );
+    
+    // Sort by severity first
+    if (maxSeverityA !== maxSeverityB) {
+      return maxSeverityA - maxSeverityB;
+    }
+    
+    // Then by issue count (descending)
+    return fileResultB.issues.length - fileResultA.issues.length;
+  });
+
   // Generate recommendations
   const recommendations = generateRecommendations(namingIssues, patternIssues);
 
