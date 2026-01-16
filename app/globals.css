@@ -1,5 +1,10 @@
 @import "tailwindcss";
 
+/* Critical: Ensure all content is visible by default (no hidden animations) */
+* {
+  animation-fill-mode: backwards !important;
+}
+
 :root {
   --background: #ffffff;
   --foreground: #171717;

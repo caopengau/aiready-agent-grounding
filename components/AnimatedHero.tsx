@@ -16,19 +16,18 @@ export default function AnimatedHero() {
   }, []);
 
   const containerVariants = {
-    hidden: { opacity: 0 },
-    visible: {
+    initial: { opacity: 1 },
+    animate: {
       opacity: 1,
       transition: {
         staggerChildren: 0.1,
-        delayChildren: 0.2,
       },
     },
   };
 
   const itemVariants = {
-    hidden: { y: 20, opacity: 0 },
-    visible: {
+    initial: { y: 0, opacity: 1 },
+    animate: {
       y: 0,
       opacity: 1,
       transition: {
@@ -41,8 +40,8 @@ export default function AnimatedHero() {
   return (
     <motion.div
       variants={containerVariants}
-      initial="hidden"
-      animate="visible"
+      initial="initial"
+      animate="animate"
       className="max-w-5xl mx-auto text-center relative"
     >
       {/* Badge */}

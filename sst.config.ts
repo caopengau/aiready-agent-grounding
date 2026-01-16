@@ -31,12 +31,13 @@ export default $config({
       environment: {
         NEXT_PUBLIC_REQUEST_URL: requestApi.url,
       },
-      domain: {
-        name: "getaiready.dev",
-        dns: sst.cloudflare.dns({
-          zone: "50eb7dcadc84c58ab34583742db0b671"
-        }),
-      },
+      // Temporarily deploy without custom domain to avoid DNS conflicts
+      // domain: {
+      //   name: "getaiready.dev",
+      //   dns: sst.cloudflare.dns({
+      //     zone: "50eb7dcadc84c58ab34583742db0b671"
+      //   }),
+      // },
     });
 
     return {

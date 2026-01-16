@@ -1,10 +1,10 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  // Removed output: "export" to enable proper client-side hydration
-  // for Framer Motion animations and Recharts
+  // Use static export for S3 deployment
+  output: "export",
   
-  // Keep image optimization disabled for now
+  // Keep image optimization disabled for static export
   images: {
     unoptimized: true,
   },
