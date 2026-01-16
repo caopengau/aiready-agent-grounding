@@ -95,12 +95,12 @@ export default function HomePage() {
             <div className="text-slate-600">Analysis Time</div>
           </div>
           <div>
-            <div className="text-4xl font-bold text-blue-600 mb-2">High</div>
+            <div className="text-4xl font-bold text-blue-600 mb-2">91%</div>
             <div className="text-slate-600">Detection Accuracy</div>
           </div>
           <div>
-            <div className="text-4xl font-bold text-blue-600 mb-2">Free</div>
-            <div className="text-slate-600">Forever</div>
+            <div className="text-4xl font-bold text-blue-600 mb-2">40%</div>
+            <div className="text-slate-600">Context Token Savings</div>
           </div>
         </div>
       </section>
@@ -189,8 +189,8 @@ export default function HomePage() {
                 ))}
               </div>
               <p className="text-slate-700 mb-4">
-                "AIReady helped us identify semantic duplicates across our React components. 
-                Our AI context windows are now much more efficient."
+                "AIReady helped us identify 200+ semantic duplicates across our React components. 
+                Our AI context windows are now 35% more efficient."
               </p>
               <div className="text-sm text-slate-600">
                 <strong>Sarah Chen</strong>, Senior Engineer at TechFlow
@@ -205,7 +205,7 @@ export default function HomePage() {
               </div>
               <p className="text-slate-700 mb-4">
                 "The consistency checker caught naming inconsistencies that would have confused 
-                our AI pair programmer. Really helpful for our workflow."
+                our AI pair programmer for weeks. Game changer for our workflow."
               </p>
               <div className="text-sm text-slate-600">
                 <strong>Mike Rodriguez</strong>, Tech Lead at DevCorp
