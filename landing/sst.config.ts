@@ -27,7 +27,6 @@ export default $config({
       link: [submissions],
       environment: {
         SUBMISSIONS_BUCKET: submissions.name,
-        SLACK_WEBHOOK_URL: process.env.SLACK_WEBHOOK_URL || "",
         SES_TO_EMAIL: process.env.SES_TO_EMAIL || "",
       },
     });

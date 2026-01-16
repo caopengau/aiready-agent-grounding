@@ -11,7 +11,6 @@ const bucket = process.env.SUBMISSIONS_BUCKET!;
 const s3 = new S3Client({});
 const sesToEmail = process.env.SES_TO_EMAIL || "";
 const ses = new SESClient({});
-const slackWebhook = process.env.SLACK_WEBHOOK_URL || "";
 
 export async function handler(event: Event) {
   const method = event.requestContext?.http?.method || "POST";
