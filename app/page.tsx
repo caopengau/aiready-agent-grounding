@@ -40,6 +40,13 @@ export default function HomePage() {
           </motion.div>
           <div className="flex items-center gap-8">
             <Link 
+              href="/docs"
+              className="text-base font-medium text-slate-600 hover:text-slate-900 relative group transition-colors"
+            >
+              <span>Docs</span>
+              <span className="absolute left-0 bottom-0 w-0 h-0.5 bg-gradient-to-r from-blue-600 to-cyan-600 group-hover:w-full transition-all duration-300"></span>
+            </Link>
+            <Link 
               href="https://www.npmjs.com/package/@aiready/cli" 
               target="_blank"
               className="text-base font-medium text-slate-600 hover:text-slate-900 relative group transition-colors"
