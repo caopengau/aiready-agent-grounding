@@ -2,6 +2,13 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import Script from "next/script";
 import "./globals.css";
+import { 
+  generateOrganizationSchema, 
+  generateSoftwareApplicationSchema,
+  generateTechArticleSchema,
+  generateCollectionPageSchema,
+  aiMetaTags,
+} from '../lib/aeo-schema';
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -106,6 +113,26 @@ export const metadata: Metadata = {
   verification: {
     google: "google-site-verification-token", // TODO: Replace with actual token
   },
+  other: {
+    // AI Search Engine specific meta tags for AEO
+    'chatgpt:description': aiMetaTags.chatgpt['chatgpt:description'],
+    'chatgpt:category': aiMetaTags.chatgpt['chatgpt:category'],
+    'chatgpt:keywords': aiMetaTags.chatgpt['chatgpt:keywords'],
+    'perplexity:summary': aiMetaTags.perplexity['perplexity:summary'],
+    'perplexity:intent': aiMetaTags.perplexity['perplexity:intent'],
+    'ai:summary': aiMetaTags.general['ai:summary'],
+    'ai:category': aiMetaTags.general['ai:category'],
+    'ai:type': aiMetaTags.general['ai:type'],
+    'ai:pricing': aiMetaTags.general['ai:pricing'],
+    'ai:license': aiMetaTags.general['ai:license'],
+    // Universal Content Protocol
+    'ucp:category': 'Developer Tools',
+    'ucp:intent': 'Provide free CLI tools for codebase AI optimization',
+    'ucp:action': 'npx @aiready/cli scan .',
+    'ucp:pricing': 'Free',
+    'ucp:license': 'MIT',
+    'ucp:repository': 'https://github.com/caopengau/aiready-cli',
+  },
 };
 
 export default function RootLayout({
@@ -113,93 +140,39 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const organizationSchema = {
-    "@context": "https://schema.org",
-    "@type": "Organization",
-    "name": "AIReady",
-    "alternateName": "aiready",
-    "url": "https://getaiready.dev",
-    "logo": {
-      "@type": "ImageObject",
-      "url": "https://getaiready.dev/logo-transparent-bg.png",
-      "width": "512",
-      "height": "512"
-    },
-    "description": "Free tools to optimize your codebase for AI collaboration",
-    "foundingDate": "2025",
-    "sameAs": [
-      "https://github.com/caopengau/aiready-cli",
-      "https://www.npmjs.com/package/@aiready/cli",
-      "https://twitter.com/aireadytools"
-    ],
-    "contactPoint": {
-      "@type": "ContactPoint",
-      "contactType": "Customer Support",
-      "url": "https://github.com/caopengau/aiready-cli/issues",
-      "availableLanguage": ["English"]
-    },
-    "brand": {
-      "@type": "Brand",
-      "name": "AIReady"
-    }
-  };
-
-  const softwareSchema = {
-    "@context": "https://schema.org",
-    "@type": "SoftwareApplication",
-    "name": "AIReady CLI",
-    "applicationCategory": "DeveloperApplication",
-    "applicationSubCategory": "Code Analysis Tool",
-    "operatingSystem": ["Windows", "macOS", "Linux"],
-    "offers": {
-      "@type": "Offer",
-      "price": "0",
-      "priceCurrency": "USD",
-      "availability": "https://schema.org/InStock"
-    },
-    "description": "Free tools to optimize your codebase for AI collaboration. Detect semantic duplicates, analyze context windows, and maintain consistency that AI models understand.",
-    "softwareVersion": "1.0",
-    "downloadUrl": "https://www.npmjs.com/package/@aiready/cli",
-    "installUrl": "https://www.npmjs.com/package/@aiready/cli",
-    "releaseNotes": "https://github.com/caopengau/aiready-cli/releases",
-    "screenshot": "https://getaiready.dev/screenshot.png",
-    "author": {
-      "@type": "Organization",
-      "name": "AIReady",
-      "url": "https://getaiready.dev"
-    },
-    "publisher": {
-      "@type": "Organization",
-      "name": "AIReady",
-      "url": "https://getaiready.dev"
-    },
-    "aggregateRating": {
-      "@type": "AggregateRating",
-      "ratingValue": "5.0",
-      "ratingCount": "2",
-      "bestRating": "5",
-      "worstRating": "1"
-    },
-    "keywords": "AI, codebase optimization, semantic analysis, context window, code consistency, developer tools",
-    "programmingLanguage": [
-      "TypeScript",
-      "JavaScript"
-    ],
-    "codeRepository": "https://github.com/caopengau/aiready-cli"
-  };
+  // Enhanced schemas for AEO and UCP
+  const organizationSchema = generateOrganizationSchema();
+  const softwareSchema = generateSoftwareApplicationSchema();
+  const techArticleSchema = generateTechArticleSchema();
+  const collectionPageSchema = generateCollectionPageSchema();
 
   return (
     <html lang="en">
       <head>
+        {/* Enhanced JSON-LD for Answer Engine Optimization */}
         <Script
           id="organization-schema"
           type="application/ld+json"
+          strategy="beforeInteractive"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationSchema) }}
         />
         <Script
           id="software-schema"
           type="application/ld+json"
+          strategy="beforeInteractive"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(softwareSchema) }}
+        />
+        <Script
+          id="tech-article-schema"
+          type="application/ld+json"
+          strategy="beforeInteractive"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(techArticleSchema) }}
+        />
+        <Script
+          id="collection-page-schema"
+          type="application/ld+json"
+          strategy="beforeInteractive"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(collectionPageSchema) }}
         />
       </head>
       <body

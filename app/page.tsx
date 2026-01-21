@@ -14,6 +14,7 @@ import { Testimonials } from '../components/Testimonials'
 import { CTA } from '../components/CTA'
 import { FAQ } from '../components/FAQ'
 import { Footer } from '../components/Footer'
+import { AIOptimizedContent } from '../components/AIOptimizedContent'
 import { generateBreadcrumbSchema, generateWebsiteSchema, generateProductSchema, generateHowToSchema } from '../lib/seo'
 
 export default function HomePage() {
@@ -76,6 +77,9 @@ export default function HomePage() {
       />
 
       <div className="min-h-screen bg-gradient-to-b from-slate-50 via-white to-slate-50 overflow-x-hidden">
+        {/* AI-Optimized Hidden Content for Search Engines */}
+        <AIOptimizedContent />
+        
         <FloatingElements />
       
       <Header />
