@@ -78,6 +78,16 @@ export function hashPassword(pwd: string): Promise<string> { ... }`;
 
                               <p>I watched GitHub Copilot suggest the same validation logic three times in one week. Different syntax. Different variable names. Same exact purpose.</p>
                               <p>The AI wasn't broken. My codebase was invisible.</p>
+
+                              <div className="my-12 max-w-2xl mx-auto">
+                                <img 
+                                  src="/series-2-invisible-to-ai.png" 
+                                  alt="Why your codebase is invisible to AI" 
+                                  className="rounded-3xl shadow-2xl border border-slate-200 dark:border-zinc-800 w-full"
+                                />
+                                <p className="text-center text-sm text-slate-500 mt-4 italic">AI models have limited visibility. If your logic is fragmented, it remains invisible to the AI's context.</p>
+                              </div>
+
                               <p>Here's the problem: AI can write code, but it can't <em>see</em> your patterns. Not the way humans do. When you have the same logic scattered across different files with different names, AI treats each one as unique. So it solves it again. And again.</p>
 
                               <Callout type="warn">

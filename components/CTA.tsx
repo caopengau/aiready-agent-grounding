@@ -5,14 +5,15 @@ import ParallaxSection from "./ParallaxSection";
 
 export function CTA() {
   return (
-    <section id="get-started" className="container mx-auto px-4 py-20">
+    <section className="container mx-auto px-4 py-20">
       <ParallaxSection offset={10}>
         <motion.div
+          id="get-started"
           initial={{ opacity: 0, scale: 0.95 }}
           whileInView={{ opacity: 1, scale: 1 }}
           transition={{ duration: 0.6 }}
           viewport={{ once: true }}
-          className="max-w-4xl mx-auto relative"
+          className="max-w-4xl mx-auto relative scroll-mt-20 md:scroll-mt-24 lg:scroll-mt-28"
         >
           {/* Animated background */}
           <div className="absolute inset-0 bg-gradient-to-r from-blue-600 via-purple-600 to-cyan-600 rounded-3xl blur-2xl opacity-20 animate-pulse" />

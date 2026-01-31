@@ -2,6 +2,8 @@ import InvisibleCodebase from './invisible-codebase';
 import invisibleCodebaseMeta from './invisible-codebase.meta';
 import AiCodeDebtTsunami from './ai-code-debt-tsunami';
 import aiCodeDebtTsunamiMeta from './ai-code-debt-tsunami.meta';
+import MetricsThatMatter from './metrics-that-actually-matter';
+import metricsThatMatterMeta from './metrics-that-actually-matter.meta';
 
 export const posts = [
   {
@@ -23,5 +25,15 @@ export const posts = [
     tags: aiCodeDebtTsunamiMeta.tags || [],
     readingTime: aiCodeDebtTsunamiMeta.readingTime || '5 min read',
     Content: AiCodeDebtTsunami,
+  },
+  {
+    slug: metricsThatMatterMeta.slug,
+    title: metricsThatMatterMeta.title,
+    date: metricsThatMatterMeta.date,
+    excerpt: metricsThatMatterMeta.excerpt,
+    author: metricsThatMatterMeta.author,
+    tags: metricsThatMatterMeta.tags || [],
+    readingTime: metricsThatMatterMeta.readingTime || '5 min read',
+    Content: MetricsThatMatter,
   },
 ];

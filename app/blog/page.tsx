@@ -1,8 +1,8 @@
-
 import { getAllPosts } from "@/lib/blog-tsx";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { BlogPageClient } from "@/components/BlogPageClient";
+import React from "react";
 
 export default async function BlogPage() {
   const posts = await getAllPosts();
