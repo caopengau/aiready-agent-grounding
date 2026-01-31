@@ -35,7 +35,8 @@ export default function ComparisonChart() {
           AIReady helps you maintain code quality as your project scales
         </p>
         <div className="h-80">
-          <ResponsiveContainer width="100%" height="100%">
+           {typeof window !== "undefined" && (
+            <ResponsiveContainer width="100%" height="100%">
             <LineChart data={data}>
               <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
               <XAxis dataKey="month" stroke="#64748b" />
@@ -66,8 +67,9 @@ export default function ComparisonChart() {
                 dot={{ fill: "#10b981", r: 5 }}
                 animationDuration={2000}
               />
-            </LineChart>
-          </ResponsiveContainer>
+              </LineChart>
+            </ResponsiveContainer>
+          )}
         </div>
       </div>
     </motion.div>

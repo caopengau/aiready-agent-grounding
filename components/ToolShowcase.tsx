@@ -4,6 +4,7 @@ import { motion } from "framer-motion";
 import { useInView } from "framer-motion";
 import { useRef, useState } from "react";
 import { RadarChart, PolarGrid, PolarAngleAxis, Radar, ResponsiveContainer } from "recharts";
+import { useEffect } from "react";
 
 const tools = [
   {
@@ -91,8 +92,9 @@ export default function ToolShowcase() {
 
             {/* Mini radar chart */}
             <div className="h-48 -mx-4 mb-4">
-              <ResponsiveContainer width="100%" height="100%">
-                <RadarChart data={tool.stats}>
+              {typeof window !== "undefined" && (
+                <ResponsiveContainer width="100%" height="100%">
+                  <RadarChart data={tool.stats}>
                   <PolarGrid stroke="#e2e8f0" />
                   <PolarAngleAxis dataKey="metric" tick={{ fill: "#64748b", fontSize: 12 }} />
                   <Radar
@@ -108,8 +110,9 @@ export default function ToolShowcase() {
                       <stop offset="100%" stopColor={tool.color.split(" ")[3]} />
                     </linearGradient>
                   </defs>
-                </RadarChart>
-              </ResponsiveContainer>
+                  </RadarChart>
+                </ResponsiveContainer>
+              )}
             </div>
 
             <code className="text-sm text-slate-500 font-mono bg-slate-50 px-3 py-2 rounded-lg border border-slate-200">

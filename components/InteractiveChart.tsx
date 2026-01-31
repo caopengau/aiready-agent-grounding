@@ -31,25 +31,27 @@ export default function InteractiveChart() {
           Save up to 40% on API costs by eliminating redundant context
         </p>
         <div className="h-80">
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={data}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-              <XAxis dataKey="name" stroke="#64748b" />
-              <YAxis stroke="#64748b" label={{ value: 'Tokens (k)', angle: -90, position: 'insideLeft' }} />
-              <Tooltip
-                contentStyle={{
-                  backgroundColor: "rgba(255, 255, 255, 0.95)",
-                  border: "1px solid #e2e8f0",
-                  borderRadius: "8px",
-                }}
-              />
-              <Bar dataKey="tokens" radius={[8, 8, 0, 0]} animationDuration={1500}>
-                {data.map((entry, index) => (
-                  <Cell key={`cell-${index}`} fill={entry.color} />
-                ))}
-              </Bar>
-            </BarChart>
-          </ResponsiveContainer>
+          {typeof window !== "undefined" ? (
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={data}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                <XAxis dataKey="name" stroke="#64748b" />
+                <YAxis stroke="#64748b" label={{ value: 'Tokens (k)', angle: -90, position: 'insideLeft' }} />
+                <Tooltip
+                  contentStyle={{
+                    backgroundColor: "rgba(255, 255, 255, 0.95)",
+                    border: "1px solid #e2e8f0",
+                    borderRadius: "8px",
+                  }}
+                />
+                <Bar dataKey="tokens" radius={[8, 8, 0, 0]} animationDuration={1500}>
+                  {data.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={entry.color} />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          ) : null}
         </div>
         <div className="mt-6 flex items-center justify-center gap-6 text-sm">
           <div className="flex items-center gap-2">

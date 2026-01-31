@@ -2,10 +2,9 @@ import Script from 'next/script'
 import AnimatedHero from '../components/AnimatedHero'
 import AnimatedStats from '../components/AnimatedStats'
 import { Benefits } from '../components/Benefits'
-import InteractiveChart from '../components/InteractiveChart'
-import ComparisonChart from '../components/ComparisonChart'
 import FloatingElements from '../components/FloatingElements'
 import ParallaxSection from '../components/ParallaxSection'
+import ChartsClient from '../components/ChartsClient'
 import RequestForm from '../components/RequestForm'
 import LiveScanDemo from '../components/LiveScanDemo'
 import { Header } from '../components/Header'
@@ -97,18 +96,8 @@ export default function HomePage() {
       {/* Benefits Section (white) to replace standalone stats */}
       <Benefits />
 
-      {/* Charts Section - Split layout */}
-      <section className="py-20 bg-gradient-to-b from-slate-900 via-blue-950 to-slate-900 relative overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-br from-blue-900/20 via-transparent to-purple-900/20" />
-        <div className="container mx-auto px-4 relative">
-          <ParallaxSection offset={30}>
-            <div className="grid lg:grid-cols-2 gap-12 max-w-7xl mx-auto">
-              <InteractiveChart />
-              <ComparisonChart />
-            </div>
-          </ParallaxSection>
-        </div>
-      </section>
+      {/* Charts Section - Split layout (client-only) */}
+      <ChartsClient />
 
       <Features />
 

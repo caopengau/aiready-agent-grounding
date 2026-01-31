@@ -188,6 +188,11 @@ export default function RootLayout({
           strategy="beforeInteractive"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(collectionPageSchema) }}
         />
+        {/* Syntax highlighting stylesheet for code blocks */}
+        <link
+          rel="stylesheet"
+          href="https://cdn.jsdelivr.net/npm/highlight.js@11.9.0/styles/github.min.css"
+        />
       </head>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased overflow-x-hidden`}

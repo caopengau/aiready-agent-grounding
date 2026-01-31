@@ -8,6 +8,10 @@
 :root {
   --background: #ffffff;
   --foreground: #171717;
+  /* Code block theming */
+  --code-bg: #f8fafc;
+  --code-border: #e6edf3;
+  --code-foreground: #0f172a;
 }
 
 @theme inline {
@@ -21,6 +25,9 @@
   :root {
     --background: #0a0a0a;
     --foreground: #ededed;
+    --code-bg: #0d1117;
+    --code-border: #111318;
+    --code-foreground: #e6eef6;
   }
 }
 
@@ -116,4 +123,38 @@ html {
   transition-property: color, background-color, border-color, text-decoration-color, fill, stroke;
   transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
   transition-duration: 150ms;
+}
+
+/* Section title styles */
+h2 {
+  font-size: 1.75rem; /* bigger */
+  font-weight: 700; /* bold */
+  line-height: 1.2;
+  margin-top: 1.25rem;
+  margin-bottom: 0.75rem;
+}
+
+h3 {
+  font-size: 1.25rem;
+  font-weight: 700;
+  margin-top: 1rem;
+  margin-bottom: 0.5rem;
+}
+
+/* Code block base styles (used by CodeBlock component) */
+.code-block {
+  background: var(--code-bg);
+  color: var(--code-foreground);
+  border: 1px solid var(--code-border);
+}
+
+.code-block pre {
+  background: transparent;
+}
+
+.code-block code {
+  color: inherit;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, "Roboto Mono", "Helvetica Neue", monospace;
+  font-size: 0.92rem;
+  line-height: 1.35; /* tighter lines */
 }
