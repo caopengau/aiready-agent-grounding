@@ -1,19 +1,30 @@
-"use client";
-import React, { useRef, useState, useMemo } from 'react';
-import hljs from 'highlight.js';
+import React from 'react';
+import hljs from 'highlight.js/lib/core';
+import typescript from 'highlight.js/lib/languages/typescript';
+import javascript from 'highlight.js/lib/languages/javascript';
+import bash from 'highlight.js/lib/languages/bash';
+import json from 'highlight.js/lib/languages/json';
 import 'highlight.js/styles/github-dark.css';
+import { CodeBlockCopyButton } from './CodeBlockCopyButton';
+
+// Register languages
+hljs.registerLanguage('typescript', typescript);
+hljs.registerLanguage('javascript', javascript);
+hljs.registerLanguage('bash', bash);
+hljs.registerLanguage('json', json);
+hljs.registerLanguage('text', () => ({ contains: [] }));
 
 interface CodeBlockProps {
   children: React.ReactNode;
   lang?: string;
 }
 
+// Server component - no hooks needed
 const CodeBlock: React.FC<CodeBlockProps> = ({ children, lang }) => {
-  const [copied, setCopied] = useState(false);
   const language = lang || 'typescript';
 
   // Process children to fix indentation issues
-  const cleanCode = useMemo(() => {
+  const cleanCode = (() => {
     // Normalize children to a string if possible
     let raw: string;
     if (typeof children === 'string') {
@@ -54,10 +65,10 @@ const CodeBlock: React.FC<CodeBlockProps> = ({ children, lang }) => {
       ? relevantLines.join('\n')
       : relevantLines.map((l) => (l.startsWith(' '.repeat(minIndent)) ? l.slice(minIndent) : l)).join('\n');
     return dedented;
-  }, [children]);
+  })();
 
   // Highlight the code synchronously
-  const highlightedCode = useMemo(() => {
+  const highlightedCode = (() => {
     if (typeof cleanCode === 'string') {
       try {
         const result = hljs.highlight(cleanCode, { language });
@@ -67,14 +78,7 @@ const CodeBlock: React.FC<CodeBlockProps> = ({ children, lang }) => {
       }
     }
     return '';
-  }, [cleanCode, language]);
-
-  const handleCopy = async () => {
-    const text = typeof cleanCode === 'string' ? cleanCode : '';
-    await navigator.clipboard.writeText(text);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
+  })();
 
   if (typeof cleanCode !== 'string') {
     return (
@@ -103,27 +107,7 @@ const CodeBlock: React.FC<CodeBlockProps> = ({ children, lang }) => {
           </span>
         </div>
         
-        <button
-          onClick={handleCopy}
-          aria-label="Copy code"
-          className={`flex items-center gap-1 rounded-md px-2 py-0.5 text-xs font-medium transition-colors duration-200 text-slate-500 hover:text-slate-900 ${copied ? 'text-emerald-500' : 'hover:bg-slate-100 dark:hover:bg-slate-800'}`}
-        >
-          {copied ? (
-            <>
-              <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-              </svg>
-              COPIED
-            </>
-          ) : (
-            <>
-              <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-              </svg>
-              COPY
-            </>
-          )}
-        </button>
+        <CodeBlockCopyButton code={cleanCode} />
       </div>
 
       {/* Code body */}
