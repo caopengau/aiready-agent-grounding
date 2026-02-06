@@ -3,7 +3,7 @@
 import React from "react";
 
 const ContextWindowCrisis: React.FC = () => (
-  <div className="prose max-w-none text-slate-900">
+  <>
     <h2 className="text-3xl md:text-4xl font-extrabold text-blue-800 mb-4 mt-0">The Context Window Crisis</h2>
     <p>Every time your AI assistant helps with code, it needs context. It reads your file, follows imports, understands dependencies. All of this costs tokens. The more fragmented your code, the more tokens you burn.</p>
     <p>Let me show you a real example from building <span className="font-semibold text-purple-700">ReceiptClaimer</span>.</p>
@@ -72,7 +72,7 @@ const ContextWindowCrisis: React.FC = () => (
         </li>
       </ol>
     </div>
-  </div>
+  </>
 );
 
 export default ContextWindowCrisis;

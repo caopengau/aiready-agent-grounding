@@ -3,7 +3,7 @@ import React from 'react';
 import CodeBlock from '../../components/CodeBlock';
 
 const Post = () => (
-  <div className="prose max-w-none text-slate-700">
+  <>
     <p>
       For decades, software teams have relied on metrics like cyclomatic
       complexity, code coverage, and lint warnings to measure code quality.
@@ -135,7 +135,7 @@ npx @aiready/context-analyzer ./src
       <a href="https://github.com/caopengau/aiready">aiready</a>, an open-source
       suite for measuring and optimizing codebases for AI adoption.*
     </p>
-  </div>
+  </>
 );
 
 export default Post;

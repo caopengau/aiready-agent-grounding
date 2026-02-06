@@ -114,7 +114,9 @@ export default async function Page({ params }: Params) {
         strategy="beforeInteractive"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(articleSchema) }}
       />
-      <BlogPostClient post={postMeta} content={content} />
+      <div className="min-h-screen bg-slate-50 dark:bg-zinc-950">
+        <BlogPostClient post={postMeta} content={content} />
+      </div>
     </>
   );
 }

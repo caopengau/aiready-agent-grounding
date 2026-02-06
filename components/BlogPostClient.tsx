@@ -7,6 +7,7 @@ import Link from "next/link";
 import { Header } from "./Header";
 import { Footer } from "./Footer";
 import { Comments } from "./Comments";
+import styles from "./BlogPostClient.module.css";
 
 interface BlogPost {
   title: string;
@@ -33,7 +34,7 @@ export function BlogPostClient({ post, content }: { post: BlogPost; content: Rea
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-zinc-950">
+    <>
       <Header />
       
       {/* Reading Progress Bar (dynamically loaded) */}
@@ -104,16 +105,7 @@ export function BlogPostClient({ post, content }: { post: BlogPost; content: Rea
 
           {/* Content */}
           <div className="bg-white dark:bg-zinc-900 rounded-3xl shadow-xl shadow-slate-200/50 dark:shadow-none border border-slate-200 dark:border-zinc-800 p-8 md:p-12 overflow-hidden">
-              <section
-              className="prose prose-slate dark:prose-invert prose-lg md:prose-xl max-w-none 
-                prose-headings:font-black prose-headings:tracking-tight 
-                prose-h2:text-3xl md:prose-h2:text-4xl prose-h2:mt-16 prose-h2:mb-8
-                prose-h3:text-2xl md:prose-h3:text-3xl prose-h3:mt-12 prose-h3:mb-6
-                prose-a:text-blue-600 prose-a:no-underline hover:prose-a:underline
-                prose-pre:bg-transparent prose-pre:p-0 prose-pre:m-0
-                prose-img:rounded-2xl prose-img:shadow-lg
-                prose-blockquote:border-l-4 prose-blockquote:border-blue-500 prose-blockquote:bg-blue-50 dark:prose-blockquote:bg-blue-900/10 prose-blockquote:py-2 prose-blockquote:px-6 prose-blockquote:rounded-r-xl"
-              >
+              <section className={styles.proseContent}>
               {content}
             </section>
           </div>
@@ -164,6 +156,6 @@ export function BlogPostClient({ post, content }: { post: BlogPost; content: Rea
         </article>
       </main>
       <Footer />
-    </div>
+    </>
   );
 }

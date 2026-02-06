@@ -3,7 +3,7 @@ import React from 'react';
 import CodeBlock from '../../components/CodeBlock';
 
 const Post = () => (
-  <div className="prose max-w-none text-slate-700">
+  <>
     <blockquote>Part 1 of "The AI Code Debt Tsunami" series</blockquote>
     <p>
       Six months ago, GitHub Copilot helped me write a user validation function
@@ -414,7 +414,7 @@ npx @aiready/context-analyzer ./src
       writing code for 15 years and learning to work with AI assistants for the
       last 2.
     </p>
-  </div>
+  </>
 );
 
 export default Post;

@@ -70,7 +70,7 @@ export function hashPassword(pwd: string): Promise<string> { ... }`;
                           const SectionDivider = () => <hr className="my-12 border-t-2 border-blue-100" />;
 
                           const Post: React.FC = () => (
-                            <div className="prose max-w-none text-slate-700">
+                            <>
                               <Callout type="info">
                                 <strong>Key Insight:</strong> AI can only see what you make visible. Code structure, duplication, and fragmentation all impact AI's ability to help you.
                               </Callout>
@@ -318,7 +318,7 @@ function checkUserValid(data) {
                                 <li><strong>Part 2: Why Your Codebase is Invisible to AI</strong> ← You are here</li>
                                 <li>Part 3: Building AIReady - Metrics That Actually Matter (coming Feb 7)</li>
                               </ul>
-                            </div>
+                            </>
                           );
 
                           export default Post;
