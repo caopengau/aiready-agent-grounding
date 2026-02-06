@@ -83,6 +83,10 @@ export default $config({
           zone: "50eb7dcadc84c58ab34583742db0b671",
         }),
       },
+      invalidation: {
+        paths: ["/*"],
+        wait: true,
+      },
     });
 
     return {
@@ -90,6 +94,8 @@ export default $config({
       apiUrl: api.url,
       submissionsBucket: submissions.name,
       emailDomain: emailDomain?.sender ?? domainName,
+      assetsBucket: site.nodes?.assets?.name ?? site.name,
+      distributionId: site.nodes?.cdn?.id ?? "",
     };
   },
 });
