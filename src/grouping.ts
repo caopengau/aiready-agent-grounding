@@ -350,10 +350,10 @@ function getHighestSeverity(severities: Severity[]): Severity {
   let highest: Severity = 'info';
   let highestValue = 0;
 
-  for (const sev of severities) {
-    if (order[sev] > highestValue) {
-      highestValue = order[sev];
-      highest = sev;
+  for (const severity of severities) {
+    if (order[severity] > highestValue) {
+      highestValue = order[severity];
+      highest = severity;
     }
   }
 
