@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState, forwardRef, useImperativeHandle } from 'react';
 import * as d3 from 'd3';
 import {
   useForceSimulation,
@@ -20,6 +20,38 @@ export interface GraphLink extends SimulationLink {
   color?: string;
   width?: number;
   label?: string;
+}
+
+export interface ForceDirectedGraphHandle {
+  /**
+   * Pin all nodes in place
+   */
+  pinAll: () => void;
+
+  /**
+   * Unpin all nodes (release constraints)
+   */
+  unpinAll: () => void;
+
+  /**
+   * Reset all nodes to auto-layout (unpin and restart simulation)
+   */
+  resetLayout: () => void;
+
+  /**
+   * Fit all nodes in the current view
+   */
+  fitView: () => void;
+
+  /**
+   * Get currently pinned node IDs
+   */
+  getPinnedNodes: () => string[];
+
+  /**
+   * Toggle dragging mode
+   */
+  setDragMode: (enabled: boolean) => void;
 }
 
 export interface ForceDirectedGraphProps {
@@ -125,39 +157,167 @@ export interface ForceDirectedGraphProps {
    * Additional CSS classes
    */
   className?: string;
+
+  /**
+   * Manual layout mode: disables forces, allows free dragging
+   * @default false
+   */
+  manualLayout?: boolean;
+
+  /**
+   * Callback when manual layout mode is toggled
+   */
+  onManualLayoutChange?: (enabled: boolean) => void;
 }
 
-export const ForceDirectedGraph: React.FC<ForceDirectedGraphProps> = ({
-  nodes: initialNodes,
-  links: initialLinks,
-  width,
-  height,
-  simulationOptions,
-  enableZoom = true,
-  enableDrag = true,
-  onNodeClick,
-  onNodeHover,
-  onLinkClick,
-  selectedNodeId,
-  hoveredNodeId,
-  defaultNodeColor = '#69b3a2',
-  defaultNodeSize = 10,
-  defaultLinkColor = '#999',
-  defaultLinkWidth = 1,
-  showNodeLabels = true,
-  showLinkLabels = false,
-  className,
-}) => {
+export const ForceDirectedGraph = forwardRef<ForceDirectedGraphHandle, ForceDirectedGraphProps>(
+  (
+    {
+      nodes: initialNodes,
+      links: initialLinks,
+      width,
+      height,
+      simulationOptions,
+      enableZoom = true,
+      enableDrag = true,
+      onNodeClick,
+      onNodeHover,
+      onLinkClick,
+      selectedNodeId,
+      hoveredNodeId,
+      defaultNodeColor = '#69b3a2',
+      defaultNodeSize = 10,
+      defaultLinkColor = '#999',
+      defaultLinkWidth = 1,
+      showNodeLabels = true,
+      showLinkLabels = false,
+      className,
+      manualLayout = false,
+      onManualLayoutChange,
+    },
+    ref
+  ) => {
   const svgRef = useRef<SVGSVGElement>(null);
   const gRef = useRef<SVGGElement>(null);
   const [transform, setTransform] = useState({ k: 1, x: 0, y: 0 });
+  const dragNodeRef = useRef<GraphNode | null>(null);
+  const dragActiveRef = useRef(false);
+  const [pinnedNodes, setPinnedNodes] = useState<Set<string>>(new Set());
+  const internalDragEnabledRef = useRef(enableDrag);
 
-  // Initialize simulation
-  const { nodes, links, restart } = useForceSimulation(initialNodes, initialLinks, {
+  // Update the ref when enableDrag prop changes
+  useEffect(() => {
+    internalDragEnabledRef.current = enableDrag;
+  }, [enableDrag]);
+
+  // Initialize simulation with manualLayout mode
+  const { nodes, links, restart, stop, setForcesEnabled } = useForceSimulation(initialNodes, initialLinks, {
     width,
     height,
+    chargeStrength: manualLayout ? 0 : undefined,
     ...simulationOptions,
   });
+
+  // If manual layout is enabled or any nodes are pinned, disable forces
+  useEffect(() => {
+    try {
+      if (manualLayout || pinnedNodes.size > 0) setForcesEnabled(false);
+      else setForcesEnabled(true);
+    } catch (e) {
+      // ignore
+    }
+  }, [manualLayout, pinnedNodes, setForcesEnabled]);
+
+  // Expose imperative handle for parent components
+  useImperativeHandle(
+    ref,
+    () => ({
+      pinAll: () => {
+        const newPinned = new Set<string>();
+        nodes.forEach((node) => {
+          node.fx = node.x;
+          node.fy = node.y;
+          newPinned.add(node.id);
+        });
+        setPinnedNodes(newPinned);
+        restart();
+      },
+
+      unpinAll: () => {
+        nodes.forEach((node) => {
+          node.fx = null;
+          node.fy = null;
+        });
+        setPinnedNodes(new Set());
+        restart();
+      },
+
+      resetLayout: () => {
+        nodes.forEach((node) => {
+          node.fx = null;
+          node.fy = null;
+        });
+        setPinnedNodes(new Set());
+        restart();
+      },
+
+      fitView: () => {
+        if (!svgRef.current || !nodes.length) return;
+
+        // Calculate bounds
+        let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+        nodes.forEach((node) => {
+          if (node.x !== undefined && node.y !== undefined) {
+            const size = node.size || 10;
+            minX = Math.min(minX, node.x - size);
+            maxX = Math.max(maxX, node.x + size);
+            minY = Math.min(minY, node.y - size);
+            maxY = Math.max(maxY, node.y + size);
+          }
+        });
+
+        if (!isFinite(minX)) return;
+
+        const padding = 40;
+        const nodeWidth = maxX - minX;
+        const nodeHeight = maxY - minY;
+        const scale = Math.min(
+          (width - padding * 2) / nodeWidth,
+          (height - padding * 2) / nodeHeight,
+          10
+        );
+
+        const centerX = (minX + maxX) / 2;
+        const centerY = (minY + maxY) / 2;
+
+        const x = width / 2 - centerX * scale;
+        const y = height / 2 - centerY * scale;
+
+        if (gRef.current && svgRef.current) {
+          const svg = d3.select(svgRef.current);
+          const newTransform = d3.zoomIdentity.translate(x, y).scale(scale);
+          svg.transition().duration(300).call(d3.zoom<SVGSVGElement, unknown>().transform as any, newTransform);
+          setTransform(newTransform);
+        }
+      },
+
+      getPinnedNodes: () => Array.from(pinnedNodes),
+
+      setDragMode: (enabled: boolean) => {
+        internalDragEnabledRef.current = enabled;
+      },
+    }),
+    [nodes, pinnedNodes, restart, width, height]
+  );
+
+  // Notify parent when manual layout mode changes (uses the prop so it's not unused)
+  useEffect(() => {
+    try {
+      if (typeof onManualLayoutChange === 'function') onManualLayoutChange(manualLayout);
+    } catch (e) {
+      // ignore errors from callbacks
+    }
+  }, [manualLayout, onManualLayoutChange]);
 
   // Set up zoom behavior
   useEffect(() => {
@@ -181,43 +341,119 @@ export const ForceDirectedGraph: React.FC<ForceDirectedGraphProps> = ({
     };
   }, [enableZoom]);
 
-  // Set up drag behavior
+  // Set up drag behavior with global listeners for smoother dragging
   const handleDragStart = useCallback(
     (event: React.MouseEvent, node: GraphNode) => {
       if (!enableDrag) return;
+      event.preventDefault();
       event.stopPropagation();
+      // pause forces while dragging to avoid the whole graph moving
+      dragActiveRef.current = true;
+      dragNodeRef.current = node;
       node.fx = node.x;
       node.fy = node.y;
-      restart();
+      setPinnedNodes((prev) => new Set([...prev, node.id]));
+      try { stop(); } catch (e) {}
     },
     [enableDrag, restart]
   );
 
-  const handleDrag = useCallback(
-    (event: React.MouseEvent, node: GraphNode) => {
-      if (!enableDrag) return;
+  useEffect(() => {
+    if (!enableDrag) return;
+
+    const handleWindowMove = (event: MouseEvent) => {
+      if (!dragActiveRef.current || !dragNodeRef.current) return;
       const svg = svgRef.current;
       if (!svg) return;
-
       const rect = svg.getBoundingClientRect();
       const x = (event.clientX - rect.left - transform.x) / transform.k;
       const y = (event.clientY - rect.top - transform.y) / transform.k;
+      dragNodeRef.current.fx = x;
+      dragNodeRef.current.fy = y;
+    };
 
-      node.fx = x;
-      node.fy = y;
-    },
-    [enableDrag, transform]
-  );
+    const handleWindowUp = () => {
+      if (!dragActiveRef.current) return;
+      // Keep fx/fy set to pin the node where it was dropped.
+      try { setForcesEnabled(true); restart(); } catch (e) {}
+      dragNodeRef.current = null;
+      dragActiveRef.current = false;
+    };
 
-  const handleDragEnd = useCallback(
-    (event: React.MouseEvent, node: GraphNode) => {
-      if (!enableDrag) return;
-      event.stopPropagation();
-      node.fx = null;
-      node.fy = null;
-    },
-    [enableDrag]
-  );
+    const handleWindowLeave = (event: MouseEvent) => {
+      if (event.relatedTarget === null) handleWindowUp();
+    };
+
+    window.addEventListener('mousemove', handleWindowMove);
+    window.addEventListener('mouseup', handleWindowUp);
+    window.addEventListener('mouseout', handleWindowLeave);
+    window.addEventListener('blur', handleWindowUp);
+
+    return () => {
+      window.removeEventListener('mousemove', handleWindowMove);
+      window.removeEventListener('mouseup', handleWindowUp);
+      window.removeEventListener('mouseout', handleWindowLeave);
+      window.removeEventListener('blur', handleWindowUp);
+    };
+  }, [enableDrag, transform]);
+
+  // Attach d3.drag behavior to node groups rendered by React. This helps make
+  // dragging more robust across transforms and pointer behaviors.
+  useEffect(() => {
+    if (!gRef.current || !enableDrag) return;
+    const g = d3.select(gRef.current);
+    const dragBehavior = d3
+      .drag<SVGGElement, unknown>()
+      .on('start', function (event) {
+        try {
+          const target = (event.sourceEvent && (event.sourceEvent.target as Element)) || (event.target as Element);
+          const grp = target.closest?.('g.node') as Element | null;
+          const id = grp?.getAttribute('data-id');
+          if (!id) return;
+          const node = nodes.find((n) => n.id === id) as GraphNode | undefined;
+          if (!node) return;
+          if (!internalDragEnabledRef.current) return;
+          if (!event.active) restart();
+          dragActiveRef.current = true;
+          dragNodeRef.current = node;
+          node.fx = node.x;
+          node.fy = node.y;
+          setPinnedNodes((prev) => new Set([...prev, node.id]));
+        } catch (e) {
+          // ignore
+        }
+      })
+      .on('drag', function (event) {
+        if (!dragActiveRef.current || !dragNodeRef.current) return;
+        const svg = svgRef.current;
+        if (!svg) return;
+        const rect = svg.getBoundingClientRect();
+        const x = (event.sourceEvent.clientX - rect.left - transform.x) / transform.k;
+        const y = (event.sourceEvent.clientY - rect.top - transform.y) / transform.k;
+        dragNodeRef.current.fx = x;
+        dragNodeRef.current.fy = y;
+      })
+      .on('end', function () {
+        // re-enable forces when drag ends
+        try { setForcesEnabled(true); restart(); } catch (e) {}
+        dragNodeRef.current = null;
+        dragActiveRef.current = false;
+      });
+
+    try {
+      g.selectAll('g.node').call(dragBehavior as any);
+    } catch (e) {
+      // ignore attach errors
+    }
+
+    return () => {
+      try {
+        g.selectAll('g.node').on('.drag', null as any);
+      } catch (e) {
+        /* ignore */
+      }
+    };
+  }, [gRef, enableDrag, nodes, transform, restart]);
 
   const handleNodeClick = useCallback(
     (node: GraphNode) => {
@@ -225,6 +461,37 @@ export const ForceDirectedGraph: React.FC<ForceDirectedGraphProps> = ({
     },
     [onNodeClick]
   );
+
+  const handleNodeDoubleClick = useCallback(
+    (event: React.MouseEvent, node: GraphNode) => {
+      event.stopPropagation();
+      if (!enableDrag) return;
+      if (node.fx === null || node.fx === undefined) {
+        node.fx = node.x;
+        node.fy = node.y;
+        setPinnedNodes((prev) => new Set([...prev, node.id]));
+      } else {
+        node.fx = null;
+        node.fy = null;
+        setPinnedNodes((prev) => {
+          const next = new Set(prev);
+          next.delete(node.id);
+          return next;
+        });
+      }
+      restart();
+    },
+    [enableDrag, restart]
+  );
+
+  const handleCanvasDoubleClick = useCallback(() => {
+    nodes.forEach((node) => {
+      node.fx = null;
+      node.fy = null;
+    });
+    setPinnedNodes(new Set());
+    restart();
+  }, [nodes, restart]);
 
   const handleNodeMouseEnter = useCallback(
     (node: GraphNode) => {
@@ -250,6 +517,7 @@ export const ForceDirectedGraph: React.FC<ForceDirectedGraphProps> = ({
       width={width}
       height={height}
       className={cn('bg-white dark:bg-gray-900', className)}
+      onDoubleClick={handleCanvasDoubleClick}
     >
       <defs>
         {/* Arrow marker for directed graphs */}
@@ -271,7 +539,7 @@ export const ForceDirectedGraph: React.FC<ForceDirectedGraphProps> = ({
         {links.map((link, i) => {
           const source = link.source as GraphNode;
           const target = link.target as GraphNode;
-          if (!source.x || !source.y || !target.x || !target.y) return null;
+          if (source.x == null || source.y == null || target.x == null || target.y == null) return null;
 
           return (
             <g key={`link-${i}`}>
@@ -305,7 +573,7 @@ export const ForceDirectedGraph: React.FC<ForceDirectedGraphProps> = ({
 
         {/* Render nodes */}
         {nodes.map((node) => {
-          if (!node.x || !node.y) return null;
+          if (node.x == null || node.y == null) return null;
 
           const isSelected = selectedNodeId === node.id;
           const isHovered = hoveredNodeId === node.id;
@@ -314,24 +582,34 @@ export const ForceDirectedGraph: React.FC<ForceDirectedGraphProps> = ({
 
           return (
             <g
-              key={node.id}
-              transform={`translate(${node.x},${node.y})`}
-              className="cursor-pointer"
-              onClick={() => handleNodeClick(node)}
-              onMouseEnter={() => handleNodeMouseEnter(node)}
-              onMouseLeave={handleNodeMouseLeave}
-              onMouseDown={(e) => handleDragStart(e, node)}
-              onMouseMove={(e) => handleDrag(e, node)}
-              onMouseUp={(e) => handleDragEnd(e, node)}
-            >
+                key={node.id}
+                transform={`translate(${node.x},${node.y})`}
+                className="cursor-pointer node"
+                data-id={node.id}
+                onClick={() => handleNodeClick(node)}
+                onDoubleClick={(event) => handleNodeDoubleClick(event, node)}
+                onMouseEnter={() => handleNodeMouseEnter(node)}
+                onMouseLeave={handleNodeMouseLeave}
+                onMouseDown={(e) => handleDragStart(e, node)}
+              >
               <circle
                 r={nodeSize}
                 fill={nodeColor}
                 stroke={isSelected ? '#000' : isHovered ? '#666' : 'none'}
-                strokeWidth={isSelected ? 3 : 2}
+                strokeWidth={pinnedNodes.has(node.id) ? 3 : isSelected ? 2.5 : isHovered ? 2 : 1.5}
                 opacity={isHovered || isSelected ? 1 : 0.9}
                 className="transition-all"
               />
+              {pinnedNodes.has(node.id) && (
+                <circle
+                  r={nodeSize + 4}
+                  fill="none"
+                  stroke="#ff6b6b"
+                  strokeWidth={1}
+                  opacity={0.5}
+                  className="pointer-events-none"
+                />
+              )}
               {showNodeLabels && node.label && (
                 <text
                   y={nodeSize + 15}
@@ -351,6 +629,7 @@ export const ForceDirectedGraph: React.FC<ForceDirectedGraphProps> = ({
       </g>
     </svg>
   );
-};
+  }
+);
 
 ForceDirectedGraph.displayName = 'ForceDirectedGraph';

@@ -168,7 +168,7 @@ export function useForceSimulation(
   initialNodes: SimulationNode[],
   initialLinks: SimulationLink[],
   options: ForceSimulationOptions
-): UseForceSimulationReturn {
+): UseForceSimulationReturn & { setForcesEnabled: (enabled: boolean) => void } {
   const {
     chargeStrength = -300,
     linkDistance = 100,
@@ -261,6 +261,32 @@ export function useForceSimulation(
     }
   };
 
+  const originalForcesRef = useRef({ charge: chargeStrength, link: linkStrength, collision: collisionStrength });
+  const forcesEnabledRef = useRef(true);
+
+  const setForcesEnabled = (enabled: boolean) => {
+    const sim = simulationRef.current;
+    if (!sim) return;
+    // avoid repeated updates
+    if (forcesEnabledRef.current === enabled) return;
+    forcesEnabledRef.current = enabled;
+
+    try {
+      // Only toggle charge and link forces to avoid collapse; keep collision/centering
+      const charge: any = sim.force('charge');
+      if (charge && typeof charge.strength === 'function') {
+        charge.strength(enabled ? originalForcesRef.current.charge : 0);
+      }
+
+      const link: any = sim.force('link');
+      if (link && typeof link.strength === 'function') {
+        link.strength(enabled ? originalForcesRef.current.link : 0);
+      }
+    } catch (e) {
+      // ignore
+    }
+  };
+
   return {
     nodes,
     links,
@@ -268,6 +294,7 @@ export function useForceSimulation(
     stop,
     isRunning,
     alpha,
+    setForcesEnabled,
   };
 }
 

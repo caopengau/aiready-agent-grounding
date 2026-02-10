@@ -49,3 +49,7 @@ export {
   type GraphLink,
   type ForceDirectedGraphProps,
 } from './charts/ForceDirectedGraph';
+export {
+  GraphControls,
+  type GraphControlsProps,
+} from './charts/GraphControls';
