@@ -70,6 +70,11 @@ export interface ForceSimulationOptions {
    * @default 0.4
    */
   velocityDecay?: number;
+
+  /**
+   * Optional tick callback invoked on each simulation tick with current nodes/links and the simulation instance
+   */
+  onTick?: (nodes: SimulationNode[], links: SimulationLink[], sim: d3.Simulation<SimulationNode, SimulationLink>) => void;
 }
 
 export interface UseForceSimulationReturn {
@@ -180,6 +185,7 @@ export function useForceSimulation(
     height,
     alphaDecay = 0.0228,
     velocityDecay = 0.4,
+    onTick,
   } = options;
 
   const [nodes, setNodes] = useState<SimulationNode[]>(initialNodes);
@@ -202,14 +208,21 @@ export function useForceSimulation(
         d3
           .forceLink<SimulationNode, SimulationLink>(linksCopy)
           .id((d) => d.id)
-          .distance(linkDistance)
+          .distance((d: any) => (d && d.distance != null ? d.distance : linkDistance))
           .strength(linkStrength)
       )
       .force('charge', d3.forceManyBody().strength(chargeStrength))
       .force('center', d3.forceCenter(width / 2, height / 2).strength(centerStrength))
       .force(
         'collision',
-        d3.forceCollide<SimulationNode>().radius(collisionRadius).strength(collisionStrength)
+        d3
+          .forceCollide<SimulationNode>()
+          .radius((d: any) => {
+            // Use node-specific size when available and add configured padding to ensure minimum spacing
+            const nodeSize = (d && d.size) ? d.size : 10;
+            return nodeSize + collisionRadius;
+          })
+          .strength(collisionStrength)
       )
       .alphaDecay(alphaDecay)
       .velocityDecay(velocityDecay);
@@ -218,6 +231,11 @@ export function useForceSimulation(
 
     // Update state on each tick
     simulation.on('tick', () => {
+      try {
+        if (typeof onTick === 'function') onTick(nodesCopy, linksCopy, simulation);
+      } catch (e) {
+        // ignore user tick errors
+      }
       setNodes([...nodesCopy]);
       setLinks([...linksCopy]);
       setAlpha(simulation.alpha());
@@ -245,6 +263,7 @@ export function useForceSimulation(
     height,
     alphaDecay,
     velocityDecay,
+    onTick,
   ]);
 
   const restart = () => {

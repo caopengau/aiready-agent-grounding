@@ -168,6 +168,11 @@ export interface ForceDirectedGraphProps {
    * Callback when manual layout mode is toggled
    */
   onManualLayoutChange?: (enabled: boolean) => void;
+
+  /**
+   * Package bounds computed by the parent (pack layout): map of `pkg:group` -> {x,y,r}
+   */
+  packageBounds?: Record<string, { x: number; y: number; r: number }>;
 }
 
 export const ForceDirectedGraph = forwardRef<ForceDirectedGraphHandle, ForceDirectedGraphProps>(
@@ -194,6 +199,7 @@ export const ForceDirectedGraph = forwardRef<ForceDirectedGraphHandle, ForceDire
       className,
       manualLayout = false,
       onManualLayoutChange,
+      packageBounds,
     },
     ref
   ) => {
@@ -211,12 +217,80 @@ export const ForceDirectedGraph = forwardRef<ForceDirectedGraphHandle, ForceDire
   }, [enableDrag]);
 
   // Initialize simulation with manualLayout mode
+  const onTick = (nodesCopy: any[], linksCopy: any[], sim: any) => {
+    const bounds = packageBounds && Object.keys(packageBounds).length ? packageBounds : undefined;
+    // fallback: if parent didn't provide packageBounds, compute locally from initialNodes
+    let effectiveBounds = bounds;
+    if (!effectiveBounds) {
+      try {
+        const counts: Record<string, number> = {};
+        (initialNodes || []).forEach((n: any) => {
+          if (n && n.kind === 'file') {
+            const g = n.packageGroup || 'root';
+            counts[g] = (counts[g] || 0) + 1;
+          }
+        });
+        const children = Object.keys(counts).map((k) => ({ name: k, value: counts[k] }));
+        if (children.length > 0) {
+          const root = d3.hierarchy({ children }).sum((d: any) => d.value as number);
+          const pack = d3.pack().size([width, height]).padding(30);
+          const packed = pack(root);
+          const map: Record<string, { x: number; y: number; r: number }> = {};
+          if (packed.children) {
+            packed.children.forEach((c: any) => {
+              map[`pkg:${c.data.name}`] = { x: c.x, y: c.y, r: c.r * 0.95 };
+            });
+            effectiveBounds = map;
+          }
+        }
+      } catch (e) {
+        // ignore fallback errors
+      }
+    }
+    if (!effectiveBounds) return;
+    try {
+      Object.values(nodesCopy).forEach((n: any) => {
+        if (!n) return;
+        // only constrain file nodes (package nodes have their own fx/fy)
+        if (n.kind === 'package') return;
+        const pkg = n.packageGroup;
+        if (!pkg) return;
+        const bound = effectiveBounds[`pkg:${pkg}`];
+        if (!bound) return;
+        const margin = (n.size || 10) + 12;
+        const dx = (n.x || 0) - bound.x;
+        const dy = (n.y || 0) - bound.y;
+        const dist = Math.sqrt(dx * dx + dy * dy) || 0.0001;
+        const maxDist = Math.max(1, bound.r - margin);
+        if (dist > maxDist) {
+          const desiredX = bound.x + dx * (maxDist / dist);
+          const desiredY = bound.y + dy * (maxDist / dist);
+          // apply a soft corrective velocity toward the desired position
+          const softness = 0.08;
+          n.vx = (n.vx || 0) + (desiredX - n.x) * softness;
+          n.vy = (n.vy || 0) + (desiredY - n.y) * softness;
+        }
+      });
+    } catch (e) {
+      // ignore
+    }
+  };
+
   const { nodes, links, restart, stop, setForcesEnabled } = useForceSimulation(initialNodes, initialLinks, {
     width,
     height,
     chargeStrength: manualLayout ? 0 : undefined,
+    onTick,
     ...simulationOptions,
   });
+
+  // If package bounds are provided, add a tick-time clamp via the hook's onTick option
+  useEffect(() => {
+    if (!packageBounds) return;
+    // nothing to do here because the hook will call onTick passed in creation; we need to recreate simulation to use onTick
+    // So restart the simulation to pick up potential changes in node bounds.
+    try { restart(); } catch (e) {}
+  }, [packageBounds, restart]);
 
   // If manual layout is enabled or any nodes are pinned, disable forces
   useEffect(() => {
@@ -535,6 +609,7 @@ export const ForceDirectedGraph = forwardRef<ForceDirectedGraphHandle, ForceDire
       </defs>
 
       <g ref={gRef}>
+        
         {/* Render links */}
         {links.map((link, i) => {
           const source = link.source as GraphNode;
@@ -626,6 +701,35 @@ export const ForceDirectedGraph = forwardRef<ForceDirectedGraphHandle, ForceDire
             </g>
           );
         })}
+        {/* Package boundary circles (from parent pack layout) - drawn on top for visibility */}
+        {packageBounds && Object.keys(packageBounds).length > 0 && (
+          <g className="package-boundaries" pointerEvents="none">
+            {Object.entries(packageBounds).map(([pid, b]) => (
+              <g key={pid}>
+                <circle
+                  cx={b.x}
+                  cy={b.y}
+                  r={b.r}
+                  fill="rgba(148,163,184,0.06)"
+                  stroke="#475569"
+                  strokeWidth={2}
+                  strokeDasharray="6 6"
+                  opacity={0.9}
+                />
+                <text
+                  x={b.x}
+                  y={Math.max(12, b.y - b.r + 14)}
+                  fill="#475569"
+                  fontSize={11}
+                  textAnchor="middle"
+                  pointerEvents="none"
+                >
+                  {pid.replace(/^pkg:/, '')}
+                </text>
+              </g>
+            ))}
+          </g>
+        )}
       </g>
     </svg>
   );
