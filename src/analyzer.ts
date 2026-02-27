@@ -9,8 +9,13 @@
  * 5. Domain consistency — is the same concept named the same everywhere?
  */
 
-import { readdirSync, statSync, existsSync, readFileSync } from 'fs';
-import { join, extname, basename } from 'path';
+import {
+  scanEntries,
+  calculateAgentGrounding,
+  VAGUE_FILE_NAMES,
+} from '@aiready/core';
+import { readFileSync, existsSync, statSync } from 'fs';
+import { join, extname, basename, relative } from 'path';
 import { parse } from '@typescript-eslint/typescript-estree';
 import type { TSESTree } from '@typescript-eslint/types';
 import type {
@@ -18,89 +23,6 @@ import type {
   AgentGroundingIssue,
   AgentGroundingReport,
 } from './types';
-import { calculateAgentGrounding } from '@aiready/core';
-
-// File names that don't describe purpose — an agent can't determine what to find here
-const VAGUE_FILE_NAMES = new Set([
-  'utils',
-  'helpers',
-  'helper',
-  'misc',
-  'common',
-  'shared',
-  'tools',
-  'util',
-  'lib',
-  'libs',
-  'stuff',
-  'functions',
-  'methods',
-  'handlers',
-  'data',
-  'temp',
-  'tmp',
-  'test-utils',
-  'test-helpers',
-  'mocks',
-]);
-
-const SUPPORTED_EXTENSIONS = new Set(['.ts', '.tsx', '.js', '.jsx']);
-const DEFAULT_EXCLUDES = [
-  'node_modules',
-  'dist',
-  '.git',
-  'coverage',
-  '.turbo',
-  'build',
-];
-
-// ---------------------------------------------------------------------------
-// File/dir collection
-// ---------------------------------------------------------------------------
-
-interface DirEntry {
-  path: string;
-  depth: number;
-}
-
-function collectEntries(
-  dir: string,
-  options: AgentGroundingOptions,
-  depth = 0,
-  dirs: DirEntry[] = [],
-  files: string[] = []
-): { dirs: DirEntry[]; files: string[] } {
-  if (depth > (options.maxDepth ?? 20)) return { dirs, files };
-  const excludes = [...DEFAULT_EXCLUDES, ...(options.exclude ?? [])];
-
-  let entries: string[];
-  try {
-    entries = readdirSync(dir);
-  } catch {
-    return { dirs, files };
-  }
-
-  for (const entry of entries) {
-    if (excludes.some((ex) => entry === ex || entry.includes(ex))) continue;
-    const full = join(dir, entry);
-    let stat;
-    try {
-      stat = statSync(full);
-    } catch {
-      continue;
-    }
-    if (stat.isDirectory()) {
-      dirs.push({ path: full, depth });
-      collectEntries(full, options, depth + 1, dirs, files);
-    } else if (stat.isFile() && SUPPORTED_EXTENSIONS.has(extname(full))) {
-      if (!options.include || options.include.some((p) => full.includes(p))) {
-        files.push(full);
-      }
-    }
-  }
-
-  return { dirs, files };
-}
 
 // ---------------------------------------------------------------------------
 // Per-file analysis
@@ -229,11 +151,20 @@ export async function analyzeAgentGrounding(
   const maxRecommendedDepth = options.maxRecommendedDepth ?? 4;
   const readmeStaleDays = options.readmeStaleDays ?? 90;
 
-  const { dirs, files } = collectEntries(rootDir, options);
+  // Use core scanEntries which respects .gitignore recursively
+  const { files, dirs: rawDirs } = await scanEntries({
+    ...options,
+    include: options.include || ['**/*.{ts,tsx,js,jsx}'],
+  });
+
+  const dirs = rawDirs.map((d: string) => ({
+    path: d,
+    depth: relative(rootDir, d).split(/[/\\]/).filter(Boolean).length,
+  }));
 
   // Structure clarity
   const deepDirectories = dirs.filter(
-    (d) => d.depth > maxRecommendedDepth
+    (d: { path: string; depth: number }) => d.depth > maxRecommendedDepth
   ).length;
 
   // Self-documentation — vague file names
@@ -268,7 +199,15 @@ export async function analyzeAgentGrounding(
   let untypedExports = 0;
   let totalExports = 0;
 
+  let processed = 0;
   for (const f of files) {
+    processed++;
+    options.onProgress?.(
+      processed,
+      files.length,
+      `agent-grounding: analyzing files`
+    );
+
     const analysis = analyzeFile(f);
     if (analysis.isBarrel) barrelExports++;
     untypedExports += analysis.untypedExports;
