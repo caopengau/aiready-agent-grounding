@@ -12,7 +12,12 @@ export interface AgentGroundingOptions extends ScanOptions {
 export interface AgentGroundingIssue extends Issue {
   type: 'agent-navigation-failure';
   /** Which grounding dimension is affected */
-  dimension: 'structure-clarity' | 'self-documentation' | 'entry-point' | 'api-clarity' | 'domain-consistency';
+  dimension:
+    | 'structure-clarity'
+    | 'self-documentation'
+    | 'entry-point'
+    | 'api-clarity'
+    | 'domain-consistency';
 }
 
 export interface AgentGroundingReport {

@@ -1,6 +1,6 @@
 /**
  * Scanner for agent-grounding dimensions.
- * 
+ *
  * Measures 5 dimensions:
  * 1. Structure clarity — how deep are directory trees?
  * 2. Self-documentation — do file names reveal purpose?
@@ -13,18 +13,46 @@ import { readdirSync, statSync, existsSync, readFileSync } from 'fs';
 import { join, extname, basename } from 'path';
 import { parse } from '@typescript-eslint/typescript-estree';
 import type { TSESTree } from '@typescript-eslint/types';
-import type { AgentGroundingOptions, AgentGroundingIssue, AgentGroundingReport } from './types';
+import type {
+  AgentGroundingOptions,
+  AgentGroundingIssue,
+  AgentGroundingReport,
+} from './types';
 import { calculateAgentGrounding } from '@aiready/core';
 
 // File names that don't describe purpose — an agent can't determine what to find here
 const VAGUE_FILE_NAMES = new Set([
-  'utils', 'helpers', 'helper', 'misc', 'common', 'shared', 'tools',
-  'util', 'lib', 'libs', 'stuff', 'functions', 'methods', 'handlers',
-  'data', 'temp', 'tmp', 'test-utils', 'test-helpers', 'mocks',
+  'utils',
+  'helpers',
+  'helper',
+  'misc',
+  'common',
+  'shared',
+  'tools',
+  'util',
+  'lib',
+  'libs',
+  'stuff',
+  'functions',
+  'methods',
+  'handlers',
+  'data',
+  'temp',
+  'tmp',
+  'test-utils',
+  'test-helpers',
+  'mocks',
 ]);
 
 const SUPPORTED_EXTENSIONS = new Set(['.ts', '.tsx', '.js', '.jsx']);
-const DEFAULT_EXCLUDES = ['node_modules', 'dist', '.git', 'coverage', '.turbo', 'build'];
+const DEFAULT_EXCLUDES = [
+  'node_modules',
+  'dist',
+  '.git',
+  'coverage',
+  '.turbo',
+  'build',
+];
 
 // ---------------------------------------------------------------------------
 // File/dir collection
@@ -40,7 +68,7 @@ function collectEntries(
   options: AgentGroundingOptions,
   depth = 0,
   dirs: DirEntry[] = [],
-  files: string[] = [],
+  files: string[] = []
 ): { dirs: DirEntry[]; files: string[] } {
   if (depth > (options.maxDepth ?? 20)) return { dirs, files };
   const excludes = [...DEFAULT_EXCLUDES, ...(options.exclude ?? [])];
@@ -53,7 +81,7 @@ function collectEntries(
   }
 
   for (const entry of entries) {
-    if (excludes.some(ex => entry === ex || entry.includes(ex))) continue;
+    if (excludes.some((ex) => entry === ex || entry.includes(ex))) continue;
     const full = join(dir, entry);
     let stat;
     try {
@@ -65,7 +93,7 @@ function collectEntries(
       dirs.push({ path: full, depth });
       collectEntries(full, options, depth + 1, dirs, files);
     } else if (stat.isFile() && SUPPORTED_EXTENSIONS.has(extname(full))) {
-      if (!options.include || options.include.some(p => full.includes(p))) {
+      if (!options.include || options.include.some((p) => full.includes(p))) {
         files.push(full);
       }
     }
@@ -91,7 +119,13 @@ function analyzeFile(filePath: string): FileAnalysis {
   try {
     code = readFileSync(filePath, 'utf-8');
   } catch {
-    return { isBarrel: false, exportedNames: [], untypedExports: 0, totalExports: 0, domainTerms: [] };
+    return {
+      isBarrel: false,
+      exportedNames: [],
+      untypedExports: 0,
+      totalExports: 0,
+      domainTerms: [],
+    };
   }
 
   let ast: TSESTree.Program;
@@ -102,11 +136,17 @@ function analyzeFile(filePath: string): FileAnalysis {
       loc: false,
     });
   } catch {
-    return { isBarrel: false, exportedNames: [], untypedExports: 0, totalExports: 0, domainTerms: [] };
+    return {
+      isBarrel: false,
+      exportedNames: [],
+      untypedExports: 0,
+      totalExports: 0,
+      domainTerms: [],
+    };
   }
 
   let isBarrel = false;
-  let exportedNames: string[] = [];
+  const exportedNames: string[] = [];
   let untypedExports = 0;
   let totalExports = 0;
 
@@ -126,7 +166,13 @@ function analyzeFile(filePath: string): FileAnalysis {
         if (name) {
           exportedNames.push(name);
           // Split camelCase into terms
-          domainTerms.push(...name.replace(/([A-Z])/g, ' $1').toLowerCase().split(/\s+/).filter(Boolean));
+          domainTerms.push(
+            ...name
+              .replace(/([A-Z])/g, ' $1')
+              .toLowerCase()
+              .split(/\s+/)
+              .filter(Boolean)
+          );
 
           // Check if it's typed (TS function/variable with annotation)
           const hasType =
@@ -152,7 +198,10 @@ function analyzeFile(filePath: string): FileAnalysis {
 // Domain vocabulary consistency check
 // ---------------------------------------------------------------------------
 
-function detectInconsistentTerms(allTerms: string[]): { inconsistent: number; vocabularySize: number } {
+function detectInconsistentTerms(allTerms: string[]): {
+  inconsistent: number;
+  vocabularySize: number;
+} {
   const termFreq = new Map<string, number>();
   for (const term of allTerms) {
     if (term.length >= 3) {
@@ -161,8 +210,8 @@ function detectInconsistentTerms(allTerms: string[]): { inconsistent: number; vo
   }
   // Very simplistic: terms that appear exactly once are "orphan concepts" —
   // they may be inconsistently named variants of common terms.
-  const orphans = [...termFreq.values()].filter(count => count === 1).length;
-  const common = [...termFreq.values()].filter(count => count >= 3).length;
+  const orphans = [...termFreq.values()].filter((count) => count === 1).length;
+  const common = [...termFreq.values()].filter((count) => count >= 3).length;
   const vocabularySize = termFreq.size;
   // Inconsistency ratio: many orphan terms relative to common terms
   const inconsistent = Math.max(0, orphans - common * 2);
@@ -174,7 +223,7 @@ function detectInconsistentTerms(allTerms: string[]): { inconsistent: number; vo
 // ---------------------------------------------------------------------------
 
 export async function analyzeAgentGrounding(
-  options: AgentGroundingOptions,
+  options: AgentGroundingOptions
 ): Promise<AgentGroundingReport> {
   const rootDir = options.rootDir;
   const maxRecommendedDepth = options.maxRecommendedDepth ?? 4;
@@ -183,10 +232,14 @@ export async function analyzeAgentGrounding(
   const { dirs, files } = collectEntries(rootDir, options);
 
   // Structure clarity
-  const deepDirectories = dirs.filter(d => d.depth > maxRecommendedDepth).length;
+  const deepDirectories = dirs.filter(
+    (d) => d.depth > maxRecommendedDepth
+  ).length;
 
   // Self-documentation — vague file names
-  const additionalVague = new Set((options.additionalVagueNames ?? []).map(n => n.toLowerCase()));
+  const additionalVague = new Set(
+    (options.additionalVagueNames ?? []).map((n) => n.toLowerCase())
+  );
   let vagueFileNames = 0;
   for (const f of files) {
     const base = basename(f, extname(f)).toLowerCase();
@@ -204,7 +257,9 @@ export async function analyzeAgentGrounding(
       const stat = statSync(readmePath);
       const ageDays = (Date.now() - stat.mtimeMs) / (1000 * 60 * 60 * 24);
       readmeIsFresh = ageDays < readmeStaleDays;
-    } catch { }
+    } catch {
+      /* ignore stat errors */
+    }
   }
 
   // File analysis
@@ -222,8 +277,10 @@ export async function analyzeAgentGrounding(
   }
 
   // Domain vocabulary consistency
-  const { inconsistent: inconsistentDomainTerms, vocabularySize: domainVocabularySize } =
-    detectInconsistentTerms(allDomainTerms);
+  const {
+    inconsistent: inconsistentDomainTerms,
+    vocabularySize: domainVocabularySize,
+  } = detectInconsistentTerms(allDomainTerms);
 
   // Calculate grounding score using core math
   const groundingResult = calculateAgentGrounding({
@@ -261,7 +318,8 @@ export async function analyzeAgentGrounding(
       severity: 'major',
       message: `${vagueFileNames} files use vague names (utils, helpers, misc) — an agent cannot determine their purpose from the name alone.`,
       location: { file: rootDir, line: 0 },
-      suggestion: 'Rename to domain-specific names: e.g., userAuthUtils → tokenValidator.',
+      suggestion:
+        'Rename to domain-specific names: e.g., userAuthUtils → tokenValidator.',
     });
   }
 
@@ -270,9 +328,11 @@ export async function analyzeAgentGrounding(
       type: 'agent-navigation-failure',
       dimension: 'entry-point',
       severity: 'critical',
-      message: 'No root README.md found — agents have no orientation document to start from.',
+      message:
+        'No root README.md found — agents have no orientation document to start from.',
       location: { file: join(rootDir, 'README.md'), line: 0 },
-      suggestion: 'Add a README.md explaining the project structure, entry points, and key conventions.',
+      suggestion:
+        'Add a README.md explaining the project structure, entry points, and key conventions.',
     });
   } else if (!readmeIsFresh) {
     issues.push({
@@ -292,7 +352,8 @@ export async function analyzeAgentGrounding(
       severity: 'major',
       message: `${untypedExports} of ${totalExports} public exports lack TypeScript type annotations — agents cannot infer the API contract.`,
       location: { file: rootDir, line: 0 },
-      suggestion: 'Add explicit return type and parameter annotations to all exported functions.',
+      suggestion:
+        'Add explicit return type and parameter annotations to all exported functions.',
     });
   }
 
@@ -303,7 +364,8 @@ export async function analyzeAgentGrounding(
       severity: 'major',
       message: `${inconsistentDomainTerms} domain terms appear to be used inconsistently — agents get confused when one concept has multiple names.`,
       location: { file: rootDir, line: 0 },
-      suggestion: 'Establish a domain glossary and enforce one term per concept across the codebase.',
+      suggestion:
+        'Establish a domain glossary and enforce one term per concept across the codebase.',
     });
   }
 
