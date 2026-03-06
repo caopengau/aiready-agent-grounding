@@ -180,10 +180,13 @@ export async function analyzeUnified(
       options.progressCallback({ tool: 'doc-drift', data: report });
     }
     result.docDrift = {
-      results: report.results || [],
+      results: (report as any).results || (report as any).issues || [],
       summary: report.summary || {},
     };
-    result.summary.totalIssues += report.issues?.length || 0;
+    const issueCount =
+      (report as any).issues?.length ||
+      ((report as any).results ? (report as any).results.length : 0);
+    result.summary.totalIssues += issueCount;
   }
 
   // Run Dependency Health analysis
@@ -199,10 +202,13 @@ export async function analyzeUnified(
       options.progressCallback({ tool: 'deps-health', data: report });
     }
     result.dependencyHealth = {
-      results: report.results || [],
+      results: (report as any).results || (report as any).issues || [],
       summary: report.summary || {},
     };
-    result.summary.totalIssues += report.issues?.length || 0;
+    const issueCount =
+      (report as any).issues?.length ||
+      ((report as any).results ? (report as any).results.length : 0);
+    result.summary.totalIssues += issueCount;
   }
 
   // Run AI Signal Clarity analysis
@@ -220,12 +226,12 @@ export async function analyzeUnified(
     }
     result.aiSignalClarity = {
       ...report,
-      results: report.results || [],
+      results: report.results || report.issues || [],
       summary: report.summary || {},
     };
     result.summary.totalIssues +=
-      report.results?.reduce(
-        (sum: number, r: any) => sum + (r.issues?.length || 0),
+      (report.results || report.issues)?.reduce(
+        (sum: number, r: any) => sum + (r.issues?.length || 1),
         0
       ) || 0;
   }
@@ -243,11 +249,15 @@ export async function analyzeUnified(
       options.progressCallback({ tool: 'agent-grounding', data: report });
     }
     result.agentGrounding = {
-      ...report,
-      results: report.results || [],
+      ...(report as any),
+      results: (report as any).results || (report as any).issues || [],
       summary: report.summary || {},
     };
-    result.summary.totalIssues += report.issues?.length || 0;
+    result.summary.totalIssues += (
+      (report as any).issues ||
+      (report as any).results ||
+      []
+    ).length;
   }
 
   // Run Testability analysis
@@ -263,11 +273,15 @@ export async function analyzeUnified(
       options.progressCallback({ tool: 'testability', data: report });
     }
     result.testability = {
-      ...report,
-      results: report.results || [],
+      ...(report as any),
+      results: (report as any).results || (report as any).issues || [],
       summary: report.summary || {},
     };
-    result.summary.totalIssues += report.issues?.length || 0;
+    result.summary.totalIssues += (
+      (report as any).issues ||
+      (report as any).results ||
+      []
+    ).length;
   }
 
   // Run Change Amplification analysis
