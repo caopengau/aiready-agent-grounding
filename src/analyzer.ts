@@ -5,6 +5,7 @@ import {
   getLineRangeLastModifiedCached,
   Severity,
   IssueType,
+  emitProgress,
 } from '@aiready/core';
 import type { DocDriftOptions, DocDriftReport, DocDriftIssue } from './types';
 import { readFileSync } from 'fs';
@@ -30,7 +31,13 @@ export async function analyzeDocDrift(
   let processed = 0;
   for (const file of files) {
     processed++;
-    options.onProgress?.(processed, files.length, `doc-drift: analyzing files`);
+    emitProgress(
+      processed,
+      files.length,
+      'doc-drift',
+      'analyzing files',
+      options.onProgress
+    );
 
     let code: string;
     try {
