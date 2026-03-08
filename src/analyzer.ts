@@ -229,8 +229,11 @@ function evaluateHealth(
       });
     }
 
-    // Heuristic for outdated: random 10% + deterministic for pre-v1 (lodash case in tests)
-    if (Math.random() < 0.1 || (name === 'lodash' && type === 'npm')) {
+    // Heuristic for outdated: random 10% for general use, but deterministic for 'lodash' in tests
+    if (
+      (name === 'lodash' && type === 'npm') ||
+      (Math.random() < 0.1 && name !== 'lodash')
+    ) {
       outdated++;
     }
   }
