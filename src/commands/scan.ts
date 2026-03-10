@@ -23,6 +23,7 @@ import {
   IssueType,
   ToolName,
   ToolRegistry,
+  emitIssuesAsAnnotations,
 } from '@aiready/core';
 import { analyzeUnified, scoreUnified, type ScoringResult } from '../index';
 import {
@@ -402,12 +403,21 @@ export async function scanAction(directory: string, options: ScanOptions) {
       let shouldFail = false;
       let failReason = '';
 
+      // Emit annotations for all issues found
+      const report = mapToUnifiedReport(results, scoringResult);
+      if (report.results && report.results.length > 0) {
+        console.log(
+          chalk.cyan(
+            `\n📝 Emitting GitHub Action annotations for ${report.results.length} issues...`
+          )
+        );
+        emitIssuesAsAnnotations(report.results);
+      }
+
       if (threshold && scoringResult.overall < threshold) {
         shouldFail = true;
         failReason = `Score ${scoringResult.overall} < threshold ${threshold}`;
       }
-
-      const report = mapToUnifiedReport(results, scoringResult);
       if (failOnLevel !== 'none') {
         if (failOnLevel === 'critical' && report.summary.criticalIssues > 0) {
           shouldFail = true;

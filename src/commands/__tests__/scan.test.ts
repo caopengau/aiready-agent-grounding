@@ -128,6 +128,10 @@ describe('Scan CLI Action', () => {
     expect(consoleSpy).toHaveBeenCalledWith(
       expect.stringContaining('PR BLOCKED')
     );
+    // Verify annotations are emitted
+    expect(consoleSpy).toHaveBeenCalledWith(
+      expect.stringContaining('Emitting GitHub Action annotations')
+    );
     exitSpy.mockRestore();
   });
 
