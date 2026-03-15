@@ -1,7 +1,7 @@
 import { calculateDependencyHealth, Severity, IssueType } from '@aiready/core';
 import type { DepsOptions, DepsReport, DepsIssue } from './types';
-import { readFileSync, existsSync, readdirSync, statSync } from 'fs';
-import { join, basename, extname } from 'path';
+import { readFileSync, readdirSync, statSync } from 'fs';
+import { join } from 'path';
 
 export async function analyzeDeps(options: DepsOptions): Promise<DepsReport> {
   const rootDir = options.rootDir;
@@ -132,7 +132,7 @@ function findManifests(dir: string, exclude: string[]): ManifestInfo[] {
 function analyzeNpm(
   path: string,
   content: string,
-  issues: DepsIssue[]
+  _issues: DepsIssue[]
 ): string[] {
   try {
     const pkg = JSON.parse(content);
@@ -146,7 +146,7 @@ function analyzeNpm(
 function analyzePython(
   path: string,
   content: string,
-  issues: DepsIssue[]
+  _issues: DepsIssue[]
 ): string[] {
   // Regex for requirements.txt: package==version or package>=version
   if (path.endsWith('requirements.txt')) {
@@ -162,7 +162,7 @@ function analyzePython(
 function analyzeMaven(
   path: string,
   content: string,
-  issues: DepsIssue[]
+  _issues: DepsIssue[]
 ): string[] {
   // Regex for pom.xml <artifactId>
   const matches = content.matchAll(/<artifactId>(.*?)<\/artifactId>/g);
@@ -172,7 +172,7 @@ function analyzeMaven(
 function analyzeGo(
   path: string,
   content: string,
-  issues: DepsIssue[]
+  _issues: DepsIssue[]
 ): string[] {
   // Regex for go.mod 'require (...)' or 'require package version'
   const matches = content.matchAll(/require\s+(?![( \s])([^\s]+)/g);
@@ -192,7 +192,7 @@ function analyzeGo(
 function analyzeDotnet(
   path: string,
   content: string,
-  issues: DepsIssue[]
+  _issues: DepsIssue[]
 ): string[] {
   // Regex for .csproj <PackageReference Include="PackageName" />
   const matches = content.matchAll(/<PackageReference\s+Include="(.*?)"/g);
